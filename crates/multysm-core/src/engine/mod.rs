@@ -12,6 +12,8 @@ use std::os::raw::{c_char, c_int, c_void};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use serde::ser::{Serialize, SerializeStruct, Serializer};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct EngineConfig {
     pub dll_path: PathBuf,
@@ -36,13 +38,50 @@ pub enum EngineError {
     ConfigMismatch,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl EngineError {
+    /// Stable machine-readable name of the variant.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            EngineError::Load { .. } => "load",
+            EngineError::Circuit { .. } => "circuit",
+            EngineError::Run { .. } => "run",
+            EngineError::ConfigMismatch => "config_mismatch",
+        }
+    }
+
+    pub fn log(&self) -> Option<&[String]> {
+        match self {
+            EngineError::Circuit { log } | EngineError::Run { log } => Some(log),
+            _ => None,
+        }
+    }
+}
+
+/// Serializes as `{ "kind": "load"|"circuit"|"run"|"config_mismatch",
+/// "message": <Display text>, "log"?: [lines] }`.
+impl Serialize for EngineError {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut out = serializer.serialize_struct("EngineError", 3)?;
+        out.serialize_field("kind", self.kind())?;
+        out.serialize_field("message", &self.to_string())?;
+        match self.log() {
+            Some(log) => out.serialize_field("log", log)?,
+            None => out.skip_field("log")?,
+        }
+        out.end()
+    }
+}
+
+/// Serializes as `{ "type": "real", "values": [..] }` or
+/// `{ "type": "complex", "values": [[re, im], ..] }`.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(tag = "type", content = "values", rename_all = "lowercase")]
 pub enum Vector {
     Real(Vec<f64>),
     Complex(Vec<(f64, f64)>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct SimResult {
     pub plot: String,
     /// Keyed by lower-case vector name, e.g. `time`, `n1`, `v1#branch`.

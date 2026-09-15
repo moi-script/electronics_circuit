@@ -4,6 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::PathBuf;
 
+use serde::Serialize;
+
 use super::nets::{build_nets, Nets, GROUND};
 use super::template::render;
 use super::validate::{is_valid_reference, is_valid_text_param};
@@ -13,7 +15,7 @@ use crate::library::spice_policy::check_spice_text;
 use crate::library::{Library, ParamKind, Spice};
 use crate::si::{format_spice, parse_si};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Netlist {
     pub text: String,
     pub nets: Nets,

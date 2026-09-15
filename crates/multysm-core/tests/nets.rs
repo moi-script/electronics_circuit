@@ -86,3 +86,23 @@ fn unknown_part_is_reported_with_its_uid() {
     assert_eq!(errors[0].code, ErrorCode::UnknownPart);
     assert_eq!(errors[0].component_uid.as_deref(), Some("c1"));
 }
+
+#[test]
+fn wire_net_names_the_net_of_each_connected_wire() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[("voltage", "10")]);
+    let r1 = b.add("basic.resistor", "R1", &[]);
+    let r2 = b.add("basic.resistor", "R2", &[]);
+    b.connect((&v1, "p"), (&r1, "1")); // w1
+    b.connect((&r1, "2"), (&r2, "1")); // w2
+    b.connect((&r2, "2"), (&gnd, "1")); // w3
+    b.wire(vec![[-5000, -5000], [-4000, -5000]]); // w4 touches nothing
+
+    let nets = build_nets(&b.build(), &lib).unwrap();
+    assert_eq!(nets.wire_net["w1"], "n1");
+    assert_eq!(nets.wire_net["w2"], nets.pin_net[&key(&r1, "2")]);
+    assert_eq!(nets.wire_net["w3"], GROUND);
+    assert!(!nets.wire_net.contains_key("w4"));
+}

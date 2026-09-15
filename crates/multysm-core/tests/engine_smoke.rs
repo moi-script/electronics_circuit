@@ -57,3 +57,21 @@ fn nul_byte_is_an_error_not_a_panic() {
         other => panic!("expected EngineError::Circuit, got {other:?}"),
     }
 }
+
+#[test]
+fn results_and_errors_serialize_to_json() {
+    let config = common::engine_config();
+    let result = run_netlist(&config, "* s\nV1 a 0 DC 1\nR1 a 0 1k\n.op\n.end\n").unwrap();
+    let json = serde_json::to_value(&result).unwrap();
+    assert!(serde_json::to_string(&result).is_ok());
+    assert_eq!(json["vectors"]["a"]["type"], "real");
+    assert_eq!(json["vectors"]["a"]["values"][0], 1.0);
+
+    let err = EngineError::Run { log: vec!["stderr Error: x".into()] };
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "run");
+    assert_eq!(json["log"][0], "stderr Error: x");
+    let json = serde_json::to_value(multysm_core::SimulateError::Engine(EngineError::ConfigMismatch)).unwrap();
+    assert_eq!(json["kind"], "config_mismatch");
+    assert!(json.get("log").is_none());
+}

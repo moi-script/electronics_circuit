@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
+use serde::Serialize;
 use walkdir::WalkDir;
 
 use super::manifest::Manifest;
@@ -12,7 +13,8 @@ use crate::netlist::template::placeholders;
 
 const MANIFEST_SCHEMA: &str = include_str!("../../../../schemas/manifest.schema.json");
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Part {
     pub manifest: Manifest,
     /// Folder containing the manifest; relative file paths resolve from here.
@@ -23,13 +25,13 @@ pub struct Part {
     pub subckt_path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LibraryIssue {
     pub path: PathBuf,
     pub message: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct Library {
     pub parts: BTreeMap<String, Part>,
     pub issues: Vec<LibraryIssue>,

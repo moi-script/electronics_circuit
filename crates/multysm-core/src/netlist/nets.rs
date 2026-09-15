@@ -6,6 +6,8 @@
 
 use std::collections::BTreeMap;
 
+use serde::{Serialize, Serializer};
+
 use super::{ErrorCode, NetlistError};
 use crate::circuit::{pin_position, point_on_segment, Project};
 use crate::library::{Library, Spice};
@@ -14,10 +16,40 @@ pub type PinKey = (String, String);
 
 pub const GROUND: &str = "0";
 
-#[derive(Debug, Clone, Default, PartialEq)]
+/// Connectivity of a project. Serializes as
+/// `{ "pinNet": [{ uid, pin, net }], "netPins": { net: [{ uid, pin }] }, "wireNet": { wireUid: net } }`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Nets {
+    #[serde(serialize_with = "pin_net_as_list")]
     pub pin_net: BTreeMap<PinKey, String>,
+    #[serde(serialize_with = "net_pins_as_objects")]
     pub net_pins: BTreeMap<String, Vec<PinKey>>,
+    /// Net of each wire that touches at least one pin, keyed by wire uid.
+    pub wire_net: BTreeMap<String, String>,
+}
+
+#[derive(Serialize)]
+struct PinNet<'a> {
+    uid: &'a str,
+    pin: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    net: Option<&'a str>,
+}
+
+fn pin_net_as_list<S: Serializer>(map: &BTreeMap<PinKey, String>, s: S) -> Result<S::Ok, S::Error> {
+    s.collect_seq(map.iter().map(|((uid, pin), net)| PinNet { uid, pin, net: Some(net) }))
+}
+
+fn net_pins_as_objects<S: Serializer>(
+    map: &BTreeMap<String, Vec<PinKey>>,
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    s.collect_map(map.iter().map(|(net, pins)| {
+        let pins: Vec<PinNet> =
+            pins.iter().map(|(uid, pin)| PinNet { uid, pin, net: None }).collect();
+        (net, pins)
+    }))
 }
 
 pub fn build_nets(project: &Project, library: &Library) -> Result<Nets, Vec<NetlistError>> {
@@ -45,8 +77,12 @@ pub fn build_nets(project: &Project, library: &Library) -> Result<Nets, Vec<Netl
     }
 
     let mut segments: Vec<(usize, usize)> = Vec::new();
+    let mut wire_starts: Vec<(&str, usize)> = Vec::new();
     for wire in &project.wires {
         let first = points.len();
+        if !wire.points.is_empty() {
+            wire_starts.push((wire.uid.as_str(), first));
+        }
         points.extend(wire.points.iter().map(|p| (p[0], p[1])));
         for i in 1..wire.points.len() {
             segments.push((first + i - 1, first + i));
@@ -92,6 +128,11 @@ pub fn build_nets(project: &Project, library: &Library) -> Result<Nets, Vec<Netl
             .clone();
         nets.pin_net.insert(key.clone(), name.clone());
         nets.net_pins.entry(name).or_default().push(key.clone());
+    }
+    for (uid, first) in wire_starts {
+        if let Some(name) = names.get(&sets.find(first)) {
+            nets.wire_net.insert(uid.to_string(), name.clone());
+        }
     }
     Ok(nets)
 }

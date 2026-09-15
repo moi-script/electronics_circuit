@@ -11,12 +11,31 @@ use engine::{run_netlist, EngineConfig, EngineError, SimResult};
 use library::Library;
 use netlist::{build_netlist, Netlist, NetlistError};
 
+/// Serializes as `{ "kind": "netlist", "message", "errors": [NetlistError] }`
+/// or, for engine failures, the `EngineError` shape
+/// (`{ "kind": "load"|"circuit"|"run"|"config_mismatch", "message", "log"? }`).
 #[derive(Debug, thiserror::Error)]
 pub enum SimulateError {
     #[error("the circuit has {} problem(s)", .0.len())]
     Netlist(Vec<NetlistError>),
     #[error(transparent)]
     Engine(#[from] EngineError),
+}
+
+impl serde::Serialize for SimulateError {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        match self {
+            SimulateError::Netlist(errors) => {
+                let mut out = serializer.serialize_struct("SimulateError", 3)?;
+                out.serialize_field("kind", "netlist")?;
+                out.serialize_field("message", &self.to_string())?;
+                out.serialize_field("errors", errors)?;
+                out.end()
+            }
+            SimulateError::Engine(e) => e.serialize(serializer),
+        }
+    }
 }
 
 /// Project → netlist → ngspice → results. The netlist is returned so callers

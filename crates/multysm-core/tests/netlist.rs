@@ -234,3 +234,35 @@ fn subcircuit_reference_is_checked_without_the_x() {
     assert_eq!(errors.len(), 1, "{errors:?}");
     assert_eq!(errors[0].code, ErrorCode::RefPrefixMismatch);
 }
+
+#[test]
+fn netlist_serializes_to_json() {
+    let lib = core_library();
+    let netlist = build_netlist(&divider(&lib, Analysis::Op).build(), &lib).unwrap();
+    let json: serde_json::Value = serde_json::to_value(&netlist).unwrap();
+    assert!(serde_json::to_string(&netlist).is_ok());
+    assert_eq!(json["text"], netlist.text.as_str());
+    let pins = json["nets"]["pinNet"].as_array().unwrap();
+    assert_eq!(pins.len(), netlist.nets.pin_net.len());
+    assert!(pins.iter().any(|p| p["uid"] == "c3" && p["pin"] == "1" && p["net"] == "n1"), "{pins:?}");
+    assert_eq!(json["nets"]["netPins"]["n1"].as_array().unwrap().len(), 2);
+    assert_eq!(json["nets"]["wireNet"]["w1"], "n1");
+}
+
+#[test]
+fn library_and_netlist_errors_serialize() {
+    let lib = core_library();
+    let json = serde_json::to_value(&lib).unwrap();
+    assert!(json["parts"]["ttl.7400"]["subcktPath"].is_string());
+    assert!(json["issues"].as_array().unwrap().is_empty());
+
+    let err = multysm_core::SimulateError::Netlist(vec![multysm_core::netlist::NetlistError::new(
+        ErrorCode::NoGround,
+        "no ground".into(),
+        None,
+    )]);
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "netlist");
+    assert_eq!(json["errors"][0]["code"], "no_ground");
+    assert!(json["message"].is_string());
+}
