@@ -239,3 +239,14 @@ fn nonexistent_root_is_exactly_one_issue() {
     assert!(lib.parts.is_empty());
     assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
 }
+
+#[test]
+fn param_key_ref_is_reserved() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "r.svg", "<svg/>");
+    let manifest = RESISTOR.replace(r#""key": "resistance""#, r#""key": "ref""#).replace("{resistance}", "{ref}");
+    write(tmp.path(), "resistor.json", &manifest);
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues.iter().any(|i| i.message.starts_with("schema:")), "{:?}", lib.issues);
+}

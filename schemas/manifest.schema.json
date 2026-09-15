@@ -47,7 +47,7 @@
         "required": ["key", "label", "default", "type"],
         "additionalProperties": false,
         "properties": {
-          "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "not": { "const": "ref" } },
           "label": { "type": "string" },
           "unit": { "type": "string" },
           "default": { "type": "string" },
