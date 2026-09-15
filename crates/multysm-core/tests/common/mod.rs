@@ -113,3 +113,15 @@ impl<'a> CircuitBuilder<'a> {
         self.project
     }
 }
+
+use multysm_core::engine::EngineConfig;
+
+pub fn engine_config() -> EngineConfig {
+    let dir = workspace_root().join("vendor").join("ngspice");
+    assert!(
+        dir.join("ngspice.dll").is_file(),
+        "ngspice not found in {} — see Plan 1, Task 0",
+        dir.display()
+    );
+    EngineConfig::from_vendor_dir(&dir)
+}
