@@ -1,8 +1,10 @@
 //! Circuit JSON → SPICE netlist.
 
+mod build;
 mod nets;
 pub mod template;
 
+pub use build::{build_netlist, Netlist};
 pub use nets::{build_nets, Nets, PinKey, GROUND};
 
 use serde::Serialize;
