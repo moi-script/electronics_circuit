@@ -26,7 +26,7 @@ A modern, calm replacement for NI Multisim aimed at **students and makers**. The
 | Plots | uPlot |
 | State | Zustand (with undo/redo history) |
 | UI styling | Tailwind CSS + shadcn/ui, restyled to the soft-dark tokens |
-| Backend | Rust (inside `src-tauri`) |
+| Backend | Rust: `crates/multysm-core` (simulation core) + thin `src-tauri` shell |
 | Simulation engine | ngspice shared library (`ngspice.dll`) with XSPICE, via Rust FFI |
 | Web version (phase 4) | ngspice compiled to WebAssembly behind the same `SimulationClient` interface |
 
@@ -98,7 +98,7 @@ All 15 groups exist from day one: Sources, Basic, Diodes, Transistors, Analog, T
   "spice": {
     "kind": "analog",
     "refPrefix": "R",
-    "template": "R{ref} {pin.1} {pin.2} {resistance}"
+    "template": "{ref} {pin.1} {pin.2} {resistance}"
   },
   "live": null,
   "controls": []
@@ -110,11 +110,12 @@ All 15 groups exist from day one: Sources, Basic, Diodes, Transistors, Analog, T
 |---|---|
 | Primitive (R, C, L, sources) | `template` |
 | Model part (1N4148, 2N2222) | `template` + `models` (inline `.model` text or `.lib` path) |
-| Subcircuit (LM741, 555) | `subckt` file ref + `pinMap` (symbol pin → subckt node) |
+| Subcircuit (LM741, 555) | `subckt` file ref (path relative to the manifest); the `template` lists pins in subcircuit port order, e.g. `X{ref} {pin.1} {pin.2} … NE555_BEH` |
 | Digital (7400, 4017) | `kind: "digital"`, XSPICE model, hidden-by-default `power` pins (VCC/GND) |
 
 **Rules**
 - Manifests are validated against `schemas/manifest.schema.json` at startup. Invalid files are skipped and listed in a "Library issues" panel; the app still starts.
+- `{ref}` is the full reference (`R1`), `{pin.<id>}` the net name, `{<param key>}` the parameter value. Pins may be marked `"optional": true`; unconnected optional pins are tied to ground through 1 GΩ.
 - Parameters of type `si` accept SI suffixes (`p n u µ m k meg g`); one shared Rust parser.
 - Symbols are SVG drawn on a 10 px grid. The canvas recolors strokes to the theme so every symbol stays readable on dark backgrounds.
 - An unknown `schema` version makes that part unavailable, not the library.
@@ -262,11 +263,13 @@ multysm/
 │  ├─ src/sim/           SimulationClient + tauri/mock implementations
 │  ├─ src/store/         Zustand circuit store, undo/redo
 │  └─ src/theme/         soft-dark tokens
-├─ src-tauri/            Rust
+├─ crates/multysm-core/ Rust simulation core (no Tauri dependency, cargo-testable)
 │  ├─ src/library/       manifests, packs, schema validation
-│  ├─ src/netlist/       connectivity, templates, SI parsing
+│  ├─ src/netlist/       connectivity, templates
 │  ├─ src/engine/        ngspice FFI, background thread, pacing
-│  └─ src/commands.rs    Tauri IPC surface
+│  └─ src/si.rs          SI value parsing
+├─ src-tauri/            Tauri shell; src/commands.rs = IPC surface calling multysm-core
+├─ vendor/ngspice/       ngspice.dll + codemodels (downloaded, git-ignored)
 ├─ components/core/      built-in starter pack
 ├─ schemas/              manifest / pack / project JSON Schemas
 └─ docs/
