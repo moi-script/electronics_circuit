@@ -1,0 +1,8 @@
+{
+  "schema": 1, "id": "basic.resistor", "name": "Resistor", "category": "Basic",
+  "tags": ["passive", "R"],
+  "symbol": { "width": 60, "height": 20, "svg": "../symbols/resistor.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "2", "x": 60, "y": 10 }] },
+  "params": [{ "key": "resistance", "label": "Resistance", "unit": "Ω", "default": "1k", "type": "si" }],
+  "spice": { "kind": "analog", "refPrefix": "R", "template": "{ref} {pin.1} {pin.2} {resistance}" }
+}

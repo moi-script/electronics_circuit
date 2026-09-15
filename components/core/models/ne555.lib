@@ -1,0 +1,15 @@
+* Behavioral 555 timer - multysm core pack (not a vendor model)
+.subckt NE555_BEH gnd trig out reset ctrl thres disch vcc
+Rdiv1 vcc ctrl 5k
+Rdiv2 ctrl lo 5k
+Rdiv3 lo gnd 5k
+* SR latch; the RC delay on q breaks the algebraic loop
+Bset qraw gnd V = V(reset,gnd) < 0.7 ? 0 : (V(trig,gnd) < V(lo,gnd) ? 1 : (V(thres,gnd) > V(ctrl,gnd) ? 0 : (V(q,gnd) > 0.5 ? 1 : 0)))
+Rlatch qraw q 1k
+Clatch q gnd 1n
+Bout oint gnd V = V(q,gnd) > 0.5 ? V(vcc,gnd) - 1.7 : 0.1
+Rout oint out 10
+Bqn qn gnd V = V(q,gnd) > 0.5 ? 0 : 1
+Sdis disch gnd qn gnd SWDIS
+.model SWDIS SW(Vt=0.5 Vh=0.1 Ron=10 Roff=1e9)
+.ends NE555_BEH

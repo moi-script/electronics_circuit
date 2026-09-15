@@ -96,3 +96,22 @@ fn pack_json_is_not_a_manifest() {
 fn category_list_has_fifteen_groups() {
     assert_eq!(Category::ALL.len(), 15);
 }
+
+mod common;
+
+#[test]
+fn core_library_loads_cleanly() {
+    let lib = common::core_library();
+    for id in [
+        "sources.ground",
+        "sources.dc_voltage",
+        "sources.pulse_voltage",
+        "basic.resistor",
+        "basic.capacitor",
+        "diodes.led",
+        "ttl.7400",
+        "mixed.555",
+    ] {
+        assert!(lib.get(id).is_some(), "missing {id}");
+    }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": 1, "id": "sources.pulse_voltage", "name": "Pulse / Clock Source", "category": "Sources",
+  "tags": ["clock", "square", "V"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/pulse_voltage.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "params": [
+    { "key": "v1", "label": "Low voltage", "unit": "V", "default": "0", "type": "si" },
+    { "key": "v2", "label": "High voltage", "unit": "V", "default": "5", "type": "si" },
+    { "key": "delay", "label": "Delay", "unit": "s", "default": "0", "type": "si" },
+    { "key": "rise", "label": "Rise time", "unit": "s", "default": "1n", "type": "si" },
+    { "key": "fall", "label": "Fall time", "unit": "s", "default": "1n", "type": "si" },
+    { "key": "width", "label": "Pulse width", "unit": "s", "default": "500u", "type": "si" },
+    { "key": "period", "label": "Period", "unit": "s", "default": "1m", "type": "si" }
+  ],
+  "spice": { "kind": "analog", "refPrefix": "V",
+             "template": "{ref} {pin.p} {pin.n} PULSE({v1} {v2} {delay} {rise} {fall} {width} {period})" }
+}

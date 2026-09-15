@@ -1,0 +1,9 @@
+{
+  "schema": 1, "id": "sources.dc_voltage", "name": "DC Voltage Source", "category": "Sources",
+  "tags": ["battery", "V"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/dc_voltage.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "params": [{ "key": "voltage", "label": "Voltage", "unit": "V", "default": "5", "type": "si" }],
+  "spice": { "kind": "analog", "refPrefix": "V", "template": "{ref} {pin.p} {pin.n} DC {voltage}" }
+}

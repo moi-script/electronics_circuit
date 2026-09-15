@@ -1,0 +1,7 @@
+{
+  "schema": 1, "id": "sources.ground", "name": "Ground", "category": "Sources",
+  "tags": ["gnd", "0V"],
+  "symbol": { "width": 20, "height": 20, "svg": "../symbols/ground.svg",
+              "pins": [{ "id": "1", "x": 10, "y": 0 }] },
+  "spice": { "kind": "ground" }
+}

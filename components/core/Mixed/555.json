@@ -1,0 +1,18 @@
+{
+  "schema": 1, "id": "mixed.555", "name": "555 Timer", "category": "Mixed",
+  "tags": ["timer", "oscillator", "NE555", "LM555"],
+  "symbol": { "width": 80, "height": 100, "svg": "../symbols/timer555.svg",
+    "pins": [
+      { "id": "1", "name": "GND",   "x": 40, "y": 100 },
+      { "id": "2", "name": "TRIG",  "x": 0,  "y": 20 },
+      { "id": "3", "name": "OUT",   "x": 80, "y": 50 },
+      { "id": "4", "name": "RESET", "x": 20, "y": 0 },
+      { "id": "5", "name": "CTRL",  "x": 0,  "y": 60, "optional": true },
+      { "id": "6", "name": "THRES", "x": 0,  "y": 40 },
+      { "id": "7", "name": "DISCH", "x": 0,  "y": 80 },
+      { "id": "8", "name": "VCC",   "x": 40, "y": 0 }
+    ] },
+  "spice": { "kind": "analog", "refPrefix": "U",
+             "template": "X{ref} {pin.1} {pin.2} {pin.3} {pin.4} {pin.5} {pin.6} {pin.7} {pin.8} NE555_BEH",
+             "subckt": "../models/ne555.lib" }
+}
