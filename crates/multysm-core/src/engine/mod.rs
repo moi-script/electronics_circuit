@@ -117,8 +117,16 @@ impl Engine {
             if !path.is_file() {
                 return Err(load_error(format!("code model {} not found", path.display())));
             }
-            let path = path.to_string_lossy().replace('\\', "/");
-            engine.command(&format!("codemodel {path}"));
+            let path_str = path.to_string_lossy().replace('\\', "/");
+            let status = engine.command(&format!("codemodel {path_str}"));
+            let log = take_log();
+            if status != 0 || has_error(&log) {
+                return Err(load_error(format!(
+                    "failed to load code model {}:\n{}",
+                    path.display(),
+                    log.join("\n")
+                )));
+            }
         }
         take_log();
         Ok(engine)
@@ -155,7 +163,11 @@ impl Engine {
         }
 
         let (plot, vectors) = unsafe { self.collect_vectors() };
-        if vectors.is_empty() {
+        // "const" is ngspice's built-in constants plot; it is the current plot
+        // whenever no analysis (.op, .tran, .ac, ...) actually ran, so a run
+        // that leaves it in place produced no simulation results even though
+        // `vectors` is non-empty (it holds only physical constants).
+        if vectors.is_empty() || plot == "const" {
             return Err(EngineError::Run { log });
         }
         Ok(SimResult { plot, vectors, log })

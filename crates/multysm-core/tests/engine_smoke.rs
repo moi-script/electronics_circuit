@@ -30,6 +30,15 @@ fn runs_back_to_back_do_not_leak_old_circuits() {
 }
 
 #[test]
+fn no_analysis_is_an_error() {
+    let netlist = "* noan\nV1 a 0 1\nR1 a 0 1k\n.end\n";
+    match run_netlist(&common::engine_config(), netlist) {
+        Err(EngineError::Run { log }) => assert!(!log.is_empty()),
+        other => panic!("expected EngineError::Run, got {other:?}"),
+    }
+}
+
+#[test]
 fn broken_netlist_returns_an_error_with_log() {
     let netlist = "* broken\nR1 a 0 1k\nQ9 nonsense\n.op\n.end\n";
     match run_netlist(&common::engine_config(), netlist) {
