@@ -3,3 +3,5 @@ node_modules/
 .next/
 out/
 target/
+vendor/
+Cargo.lock.bak
