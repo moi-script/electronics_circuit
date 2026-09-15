@@ -6,6 +6,8 @@ pub enum SiError {
     Empty,
     #[error("'{0}' is not a number")]
     NotANumber(String),
+    #[error("'{0}' is out of range")]
+    OutOfRange(String),
 }
 
 /// Parses an engineering value. Case rules: `meg`/`M` = 1e6, `m` = 1e-3,
@@ -30,7 +32,11 @@ pub fn parse_si(input: &str) -> Result<f64, SiError> {
     } else {
         format!("{mantissa}e{exponent}").parse::<f64>()
     };
-    parsed.map_err(|_| SiError::NotANumber(s.to_string()))
+    let value = parsed.map_err(|_| SiError::NotANumber(s.to_string()))?;
+    if !value.is_finite() {
+        return Err(SiError::OutOfRange(s.to_string()));
+    }
+    Ok(value)
 }
 
 /// Writes a value in a form every SPICE accepts, e.g. `4.7e3`.
@@ -145,6 +151,13 @@ mod tests {
         assert_eq!(parse_si("abc"), Err(SiError::NotANumber("abc".into())));
         assert_eq!(parse_si("-"), Err(SiError::NotANumber("-".into())));
         assert_eq!(parse_si("."), Err(SiError::NotANumber(".".into())));
+    }
+
+    #[test]
+    fn rejects_non_finite_values() {
+        assert_eq!(parse_si("1e400"), Err(SiError::OutOfRange("1e400".into())));
+        assert_eq!(parse_si("-1e400"), Err(SiError::OutOfRange("-1e400".into())));
+        assert_eq!(parse_si("1e308k"), Err(SiError::OutOfRange("1e308k".into())));
     }
 
     #[test]

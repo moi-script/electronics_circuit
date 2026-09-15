@@ -30,7 +30,7 @@
             "required": ["id", "x", "y"],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string", "minLength": 1 },
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9_+-]+$" },
               "name": { "type": "string" },
               "x": { "type": "integer" },
               "y": { "type": "integer" },

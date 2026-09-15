@@ -48,3 +48,12 @@ fn broken_netlist_returns_an_error_with_log() {
         other => panic!("expected an error, got {other:?}"),
     }
 }
+
+#[test]
+fn nul_byte_is_an_error_not_a_panic() {
+    let netlist = "* nul\nV1 a 0 1\nR1 a 0 1k\0\n.op\n.end\n";
+    match run_netlist(&common::engine_config(), netlist) {
+        Err(EngineError::Circuit { log }) => assert_eq!(log, vec!["netlist contains a NUL byte"]),
+        other => panic!("expected EngineError::Circuit, got {other:?}"),
+    }
+}

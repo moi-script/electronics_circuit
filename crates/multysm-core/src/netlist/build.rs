@@ -1,14 +1,16 @@
 //! Builds SPICE netlist text from a project, with pre-run checks.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::PathBuf;
 
 use super::nets::{build_nets, Nets, GROUND};
 use super::template::render;
+use super::validate::{is_valid_reference, is_valid_text_param};
 use super::{ErrorCode, NetlistError};
 use crate::circuit::{Analysis, Project};
-use crate::library::{Library, ParamKind};
+use crate::library::spice_policy::check_spice_text;
+use crate::library::{Library, ParamKind, Spice};
 use crate::si::{format_spice, parse_si};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,6 +30,8 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
             None,
         ));
     }
+
+    check_references(project, library, &mut errors);
 
     let mut tie_lines = Vec::new();
     for (net, pins) in &nets.net_pins {
@@ -69,6 +73,10 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
             continue;
         };
         let errors_before = errors.len();
+        if !is_valid_reference(&inst.reference) {
+            // Reported by check_references; never render it.
+            continue;
+        }
 
         let mut values: BTreeMap<String, String> = BTreeMap::new();
         values.insert("ref".into(), inst.reference.clone());
@@ -79,7 +87,18 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
         for param in &part.manifest.params {
             let raw = inst.params.get(&param.key).unwrap_or(&param.default);
             let value = match param.kind {
-                ParamKind::Text => raw.clone(),
+                ParamKind::Text if is_valid_text_param(raw) => raw.clone(),
+                ParamKind::Text => {
+                    errors.push(NetlistError::new(
+                        ErrorCode::InvalidParam,
+                        format!(
+                            "{}: {} contains a character that is not allowed (control characters, ';', '$', '{{', '}}')",
+                            inst.reference, param.label
+                        ),
+                        Some(inst.uid.as_str()),
+                    ));
+                    continue;
+                }
                 ParamKind::Si => match parse_si(raw) {
                     Ok(v) => format_spice(v),
                     Err(_) => {
@@ -95,18 +114,49 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
             values.insert(param.key.clone(), value);
         }
 
-        match render(&device.template, |name| values.get(name).cloned()) {
-            Ok(line) => device_lines.push(line),
-            Err(e) if errors.len() == errors_before => errors.push(NetlistError::new(
-                ErrorCode::Template,
-                format!("{}: {e}", inst.reference),
-                Some(inst.uid.as_str()),
-            )),
-            Err(_) => {}
+        if errors.len() == errors_before {
+            match render(&device.template, |name| values.get(name).cloned()) {
+                Ok(line) => {
+                    let element = line.split_whitespace().next().unwrap_or("");
+                    let name = match device.subckt {
+                        Some(_) => element.strip_prefix(['X', 'x']).unwrap_or(element),
+                        None => element,
+                    };
+                    let prefix = &device.ref_prefix;
+                    let matches = name
+                        .get(..prefix.len())
+                        .is_some_and(|start| start.eq_ignore_ascii_case(prefix));
+                    if matches {
+                        device_lines.push(line);
+                    } else {
+                        errors.push(NetlistError::new(
+                            ErrorCode::RefPrefixMismatch,
+                            format!(
+                                "{}: a {} reference must start with '{prefix}'",
+                                inst.reference, part.manifest.name
+                            ),
+                            Some(inst.uid.as_str()),
+                        ));
+                    }
+                }
+                Err(e) => errors.push(NetlistError::new(
+                    ErrorCode::Template,
+                    format!("{}: {e}", inst.reference),
+                    Some(inst.uid.as_str()),
+                )),
+            }
         }
 
         for model in &device.models {
             if !models.contains(model) {
+                if let Err(e) = check_spice_text(model) {
+                    errors.push(NetlistError::new(
+                        ErrorCode::ModelFile,
+                        format!("{}: model {e}", inst.reference),
+                        Some(inst.uid.as_str()),
+                    ));
+                    continue;
+                }
                 models.push(model.clone());
             }
         }
@@ -121,7 +171,15 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
     let mut subckt_texts = Vec::new();
     for (path, uid) in &subckt_files {
         match fs::read_to_string(path) {
-            Ok(text) => subckt_texts.push(text.trim_end().to_string()),
+            // Re-checked here because the file may have changed since loading.
+            Ok(text) => match check_spice_text(&text) {
+                Ok(()) => subckt_texts.push(text.trim_end().to_string()),
+                Err(e) => errors.push(NetlistError::new(
+                    ErrorCode::ModelFile,
+                    format!("model file {} {e}", path.display()),
+                    Some(uid.as_str()),
+                )),
+            },
             Err(e) => errors.push(NetlistError::new(
                 ErrorCode::ModelFile,
                 format!("cannot read model file {}: {e}", path.display()),
@@ -144,6 +202,38 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
     lines.push(directive.expect("errors checked above"));
     lines.push(".end".into());
     Ok(Netlist { text: lines.join("\n") + "\n", nets })
+}
+
+/// Reference syntax (every component) and case-insensitive uniqueness
+/// (devices only; ground symbols never reach the netlist).
+fn check_references(project: &Project, library: &Library, errors: &mut Vec<NetlistError>) {
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    for inst in &project.components {
+        if !is_valid_reference(&inst.reference) {
+            errors.push(NetlistError::new(
+                ErrorCode::InvalidReference,
+                format!(
+                    "'{}' is not a valid reference: use a letter followed by letters, digits or '_'",
+                    inst.reference.escape_debug()
+                ),
+                Some(inst.uid.as_str()),
+            ));
+            continue;
+        }
+        let is_ground = library
+            .get(&inst.part)
+            .is_some_and(|part| matches!(part.manifest.spice, Spice::Ground));
+        if is_ground {
+            continue;
+        }
+        if !seen.insert(inst.reference.to_ascii_uppercase()) {
+            errors.push(NetlistError::new(
+                ErrorCode::DuplicateReference,
+                format!("reference '{}' is used by more than one component", inst.reference),
+                Some(inst.uid.as_str()),
+            ));
+        }
+    }
 }
 
 fn analysis_directive(project: &Project) -> Result<String, NetlistError> {

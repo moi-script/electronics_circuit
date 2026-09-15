@@ -115,3 +115,74 @@ fn core_library_loads_cleanly() {
         assert!(lib.get(id).is_some(), "missing {id}");
     }
 }
+
+const DIODE: &str = r#"{
+  "schema": 1, "id": "diodes.test", "name": "Diode", "category": "Diodes",
+  "symbol": { "width": 40, "height": 20, "svg": "d.svg",
+              "pins": [{ "id": "A", "x": 0, "y": 10 }, { "id": "K", "x": 40, "y": 10 }] },
+  "spice": { "kind": "analog", "refPrefix": "D", "template": "{ref} {pin.A} {pin.K} DTEST",
+             "models": [MODELS] SUBCKT }
+}"#;
+
+fn diode(models: &str, subckt: Option<&str>) -> String {
+    let subckt = subckt.map(|s| format!(r#", "subckt": "{s}""#)).unwrap_or_default();
+    DIODE.replace("MODELS", models).replace("SUBCKT", &subckt)
+}
+
+#[test]
+fn model_string_with_control_block_becomes_an_issue() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "d.svg", "<svg/>");
+    write(
+        tmp.path(),
+        "diode.json",
+        &diode(r#"".model DTEST D\n.control\nshell echo pwned\n.endc""#, None),
+    );
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.parts.is_empty());
+    assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
+    assert!(lib.issues[0].message.contains(".control"), "{:?}", lib.issues);
+}
+
+#[test]
+fn subckt_file_with_shell_becomes_an_issue() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "d.svg", "<svg/>");
+    write(tmp.path(), "evil.lib", ".subckt EVIL a b\nR1 a b 1k\n.ends EVIL\nshell echo pwned\n");
+    write(tmp.path(), "diode.json", &diode(r#"".model DTEST D""#, Some("evil.lib")));
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.parts.is_empty());
+    assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
+    assert!(lib.issues[0].message.contains("shell"), "{:?}", lib.issues);
+}
+
+#[test]
+fn include_directive_in_models_becomes_an_issue() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "d.svg", "<svg/>");
+    write(tmp.path(), "diode.json", &diode(r#"".include C:/secrets.lib""#, None));
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues[0].message.contains(".include"), "{:?}", lib.issues);
+}
+
+#[test]
+fn clean_models_and_subckt_load() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "d.svg", "<svg/>");
+    write(tmp.path(), "ok.lib", "* ok\n.subckt OK a b\nR1 a b 1k\n+ \n.ends OK\n");
+    write(tmp.path(), "diode.json", &diode(r#"".model DTEST D(Is=1e-14)""#, Some("ok.lib")));
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.issues.is_empty(), "{:?}", lib.issues);
+    assert!(lib.get("diodes.test").is_some());
+}
+
+#[test]
+fn pin_id_with_spaces_is_a_schema_issue() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "r.svg", "<svg/>");
+    write(tmp.path(), "resistor.json", &RESISTOR.replace(r#""id": "2""#, r#""id": "2 x""#));
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues.iter().any(|i| i.message.starts_with("schema:")), "{:?}", lib.issues);
+}

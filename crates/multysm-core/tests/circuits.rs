@@ -134,3 +134,24 @@ fn netlist_errors_stop_before_the_engine() {
         other => panic!("expected netlist errors, got {other:?}"),
     }
 }
+
+#[test]
+fn injected_reference_stops_before_the_engine() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[]);
+    let r1 = b.add("basic.resistor", "R1", &[]);
+    b.connect((&v1, "p"), (&r1, "1"));
+    b.connect((&r1, "2"), (&gnd, "1"));
+    b.connect((&v1, "n"), (&gnd, "1"));
+    let mut project = b.build();
+    // Harmless payload: even if validation regressed, ngspice only echoes.
+    project.components[2].reference = "R1 n1 0 1k\n.control\necho injected\n.endc\n*".into();
+    match simulate(&project, &lib, &engine_config()) {
+        Err(multysm_core::SimulateError::Netlist(errors)) => assert!(errors
+            .iter()
+            .any(|e| e.code == multysm_core::netlist::ErrorCode::InvalidReference)),
+        other => panic!("expected netlist errors, got {other:?}"),
+    }
+}

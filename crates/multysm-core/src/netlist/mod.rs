@@ -3,6 +3,7 @@
 mod build;
 mod nets;
 pub mod template;
+mod validate;
 
 pub use build::{build_netlist, Netlist};
 pub use nets::{build_nets, Nets, PinKey, GROUND};
@@ -19,6 +20,9 @@ pub enum ErrorCode {
     Template,
     ModelFile,
     BadAnalysis,
+    InvalidReference,
+    DuplicateReference,
+    RefPrefixMismatch,
 }
 
 /// A problem found before simulation, tied to a component when possible so

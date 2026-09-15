@@ -133,8 +133,13 @@ impl Engine {
     }
 
     fn command(&self, command: &str) -> c_int {
-        let command = CString::new(command).expect("command has no NUL byte");
-        unsafe { (self.api.command)(command.as_ptr()) }
+        match CString::new(command) {
+            Ok(command) => unsafe { (self.api.command)(command.as_ptr()) },
+            Err(_) => {
+                push_log("stderr Error: command contains a NUL byte".into());
+                1
+            }
+        }
     }
 
     fn run(&self, netlist: &str) -> Result<SimResult, EngineError> {
@@ -142,10 +147,9 @@ impl Engine {
         self.command("destroy all");
         take_log();
 
-        let lines: Vec<CString> = netlist
-            .lines()
-            .map(|line| CString::new(line).expect("netlist has no NUL byte"))
-            .collect();
+        let Ok(lines) = netlist.lines().map(CString::new).collect::<Result<Vec<CString>, _>>() else {
+            return Err(EngineError::Circuit { log: vec!["netlist contains a NUL byte".into()] });
+        };
         let mut pointers: Vec<*mut c_char> =
             lines.iter().map(|line| line.as_ptr() as *mut c_char).collect();
         pointers.push(std::ptr::null_mut());

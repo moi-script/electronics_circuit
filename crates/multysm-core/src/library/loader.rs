@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use super::manifest::Manifest;
+use super::spice_policy::check_spice_text;
 use crate::netlist::template::placeholders;
 
 const MANIFEST_SCHEMA: &str = include_str!("../../../../schemas/manifest.schema.json");
@@ -105,9 +106,27 @@ fn load_part(path: &Path, validator: &jsonschema::Validator) -> Result<Part, Vec
     }
     if let Some(device) = manifest.spice.device() {
         if let Some(subckt) = &device.subckt {
-            if !dir.join(subckt).is_file() {
+            let path = dir.join(subckt);
+            if !path.is_file() {
                 problems.push(format!("subcircuit file '{subckt}' not found"));
+            } else {
+                match fs::read_to_string(&path) {
+                    Ok(text) => {
+                        if let Err(e) = check_spice_text(&text) {
+                            problems.push(format!("subcircuit file '{subckt}' {e}"));
+                        }
+                    }
+                    Err(e) => problems.push(format!("cannot read subcircuit file '{subckt}': {e}")),
+                }
             }
+        }
+        for (i, model) in device.models.iter().enumerate() {
+            if let Err(e) = check_spice_text(model) {
+                problems.push(format!("models[{i}] {e}"));
+            }
+        }
+        if device.template.chars().any(char::is_control) {
+            problems.push("template contains a control character".into());
         }
         match placeholders(&device.template) {
             Ok(names) => {
