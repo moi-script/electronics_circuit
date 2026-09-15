@@ -186,3 +186,56 @@ fn pin_id_with_spaces_is_a_schema_issue() {
     assert!(lib.parts.is_empty());
     assert!(lib.issues.iter().any(|i| i.message.starts_with("schema:")), "{:?}", lib.issues);
 }
+
+#[test]
+fn symbol_path_escaping_the_root_becomes_an_issue() {
+    let outer = tempfile::tempdir().unwrap();
+    write(outer.path(), "outside.svg", "<svg/>");
+    let root = outer.path().join("lib");
+    write(&root, "Basic/resistor.json", &RESISTOR.replace("r.svg", "../../outside.svg"));
+    let lib = load_library(&[root]);
+    assert!(lib.parts.is_empty());
+    assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
+    assert!(lib.issues[0].message.contains("outside the library folder"), "{:?}", lib.issues);
+}
+
+#[test]
+fn absolute_subckt_path_becomes_an_issue() {
+    let outer = tempfile::tempdir().unwrap();
+    write(outer.path(), "abs.lib", ".subckt ABS a b\nR1 a b 1k\n.ends ABS\n");
+    let abs = outer.path().join("abs.lib").to_string_lossy().replace('\\', "/");
+    let root = outer.path().join("lib");
+    write(&root, "d.svg", "<svg/>");
+    write(&root, "diode.json", &diode(r#"".model DTEST D""#, Some(&abs)));
+    let lib = load_library(&[root]);
+    assert!(lib.parts.is_empty());
+    assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
+    assert!(lib.issues[0].message.contains("must be a relative path"), "{:?}", lib.issues);
+}
+
+#[test]
+fn relative_paths_inside_the_root_resolve_to_canonical_paths() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "symbols/r.svg", "<svg/>");
+    write(tmp.path(), "Basic/resistor.json", &RESISTOR.replace("r.svg", "../symbols/r.svg"));
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.issues.is_empty(), "{:?}", lib.issues);
+    let part = lib.get("basic.resistor").unwrap();
+    assert_eq!(part.symbol_path, fs::canonicalize(tmp.path().join("symbols/r.svg")).unwrap());
+    assert_eq!(part.subckt_path, None);
+}
+
+#[test]
+fn core_parts_have_resolved_subckt_paths() {
+    let lib = common::core_library();
+    let path = lib.get("ttl.7400").unwrap().subckt_path.as_ref().unwrap();
+    assert!(path.ends_with("sn7400.lib") && path.is_absolute(), "{}", path.display());
+}
+
+#[test]
+fn nonexistent_root_is_exactly_one_issue() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lib = load_library(&[tmp.path().join("does-not-exist")]);
+    assert!(lib.parts.is_empty());
+    assert_eq!(lib.issues.len(), 1, "{:?}", lib.issues);
+}

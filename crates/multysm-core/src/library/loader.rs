@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use walkdir::WalkDir;
 
@@ -17,6 +17,10 @@ pub struct Part {
     pub manifest: Manifest,
     /// Folder containing the manifest; relative file paths resolve from here.
     pub dir: PathBuf,
+    /// Canonical path of the symbol SVG, inside the library root.
+    pub symbol_path: PathBuf,
+    /// Canonical path of the subcircuit file, inside the library root.
+    pub subckt_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,17 +50,41 @@ pub fn load_library(roots: &[PathBuf]) -> Library {
     let mut origins: BTreeMap<String, PathBuf> = BTreeMap::new();
 
     for root in roots {
-        let mut files: Vec<PathBuf> = WalkDir::new(root)
-            .into_iter()
-            .filter_map(|entry| entry.ok())
-            .map(|entry| entry.into_path())
-            .filter(|p| p.extension().is_some_and(|ext| ext == "json"))
-            .filter(|p| p.file_name().is_some_and(|name| name != "pack.json"))
-            .collect();
+        let root_dir = match fs::canonicalize(root) {
+            Ok(dir) if dir.is_dir() => dir,
+            Ok(_) => {
+                library.issues.push(LibraryIssue {
+                    path: root.clone(),
+                    message: "library root is not a folder".into(),
+                });
+                continue;
+            }
+            Err(e) => {
+                library.issues.push(LibraryIssue {
+                    path: root.clone(),
+                    message: format!("cannot open library root: {e}"),
+                });
+                continue;
+            }
+        };
+        let mut files: Vec<PathBuf> = Vec::new();
+        for entry in WalkDir::new(root) {
+            match entry {
+                Ok(entry) => files.push(entry.into_path()),
+                Err(e) => library.issues.push(LibraryIssue {
+                    path: e.path().unwrap_or(root).to_path_buf(),
+                    message: format!("cannot read library folder: {e}"),
+                }),
+            }
+        }
+        files.retain(|p| {
+            p.extension().is_some_and(|ext| ext == "json")
+                && p.file_name().is_some_and(|name| name != "pack.json")
+        });
         files.sort();
 
         for path in files {
-            match load_part(&path, &validator) {
+            match load_part(&path, &root_dir, &validator) {
                 Ok(part) => {
                     let id = part.manifest.id.clone();
                     if let Some(first) = origins.get(&id) {
@@ -83,7 +111,11 @@ pub fn load_library(roots: &[PathBuf]) -> Library {
     library
 }
 
-fn load_part(path: &Path, validator: &jsonschema::Validator) -> Result<Part, Vec<String>> {
+fn load_part(
+    path: &Path,
+    root: &Path,
+    validator: &jsonschema::Validator,
+) -> Result<Part, Vec<String>> {
     let text = fs::read_to_string(path).map_err(|e| vec![format!("cannot read file: {e}")])?;
     let value: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| vec![format!("invalid JSON: {e}")])?;
@@ -101,23 +133,21 @@ fn load_part(path: &Path, validator: &jsonschema::Validator) -> Result<Part, Vec
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     let mut problems = Vec::new();
-    if !dir.join(&manifest.symbol.svg).is_file() {
-        problems.push(format!("symbol file '{}' not found", manifest.symbol.svg));
-    }
+    let symbol_path = resolve_file(root, &dir, &manifest.symbol.svg, "symbol")
+        .map_err(|e| problems.push(e))
+        .ok();
+    let mut subckt_path = None;
     if let Some(device) = manifest.spice.device() {
         if let Some(subckt) = &device.subckt {
-            let path = dir.join(subckt);
-            if !path.is_file() {
-                problems.push(format!("subcircuit file '{subckt}' not found"));
-            } else {
-                match fs::read_to_string(&path) {
-                    Ok(text) => {
-                        if let Err(e) = check_spice_text(&text) {
-                            problems.push(format!("subcircuit file '{subckt}' {e}"));
-                        }
-                    }
+            match resolve_file(root, &dir, subckt, "subcircuit") {
+                Ok(path) => match fs::read_to_string(&path) {
+                    Ok(text) => match check_spice_text(&text) {
+                        Ok(()) => subckt_path = Some(path),
+                        Err(e) => problems.push(format!("subcircuit file '{subckt}' {e}")),
+                    },
                     Err(e) => problems.push(format!("cannot read subcircuit file '{subckt}': {e}")),
-                }
+                },
+                Err(e) => problems.push(e),
             }
         }
         for (i, model) in device.models.iter().enumerate() {
@@ -145,9 +175,32 @@ fn load_part(path: &Path, validator: &jsonschema::Validator) -> Result<Part, Vec
         }
     }
 
-    if problems.is_empty() {
-        Ok(Part { manifest, dir })
-    } else {
-        Err(problems)
+    match symbol_path {
+        Some(symbol_path) if problems.is_empty() => {
+            Ok(Part { manifest, dir, symbol_path, subckt_path })
+        }
+        _ => Err(problems),
     }
+}
+
+/// Resolves a manifest-relative file path. The file must exist and, after
+/// following `..` and links, lie inside the library root: packs are
+/// untrusted and must not reach files elsewhere on disk.
+fn resolve_file(root: &Path, dir: &Path, rel: &str, what: &str) -> Result<PathBuf, String> {
+    let rel_path = Path::new(rel);
+    let anchored = rel_path
+        .components()
+        .any(|c| matches!(c, Component::Prefix(_) | Component::RootDir));
+    if anchored || rel_path.is_absolute() {
+        return Err(format!("{what} file '{rel}' must be a relative path"));
+    }
+    let path = fs::canonicalize(dir.join(rel_path))
+        .map_err(|_| format!("{what} file '{rel}' not found"))?;
+    if !path.starts_with(root) {
+        return Err(format!("{what} file '{rel}' is outside the library folder"));
+    }
+    if !path.is_file() {
+        return Err(format!("{what} file '{rel}' not found"));
+    }
+    Ok(path)
 }

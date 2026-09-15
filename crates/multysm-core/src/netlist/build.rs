@@ -160,10 +160,18 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
                 models.push(model.clone());
             }
         }
-        if let Some(subckt) = &device.subckt {
-            let path = part.dir.join(subckt);
-            if !subckt_files.iter().any(|(p, _)| p == &path) {
-                subckt_files.push((path, inst.uid.clone()));
+        if device.subckt.is_some() {
+            match &part.subckt_path {
+                Some(path) => {
+                    if !subckt_files.iter().any(|(p, _)| p == path) {
+                        subckt_files.push((path.clone(), inst.uid.clone()));
+                    }
+                }
+                None => errors.push(NetlistError::new(
+                    ErrorCode::ModelFile,
+                    format!("{}: the part's subcircuit file was not resolved", inst.reference),
+                    Some(inst.uid.as_str()),
+                )),
             }
         }
     }
