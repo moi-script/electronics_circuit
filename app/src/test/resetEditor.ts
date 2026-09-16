@@ -1,5 +1,5 @@
 import library from "@/backend/mock-library.json";
-import { editorStore } from "@/model/store";
+import { editorStore, idleSim } from "@/model/store";
 import type { LibraryData } from "@/model/types";
 
 export const testLibrary = library as unknown as LibraryData;
@@ -12,5 +12,6 @@ export function resetEditor(lib: LibraryData | null = testLibrary) {
     clipboard: null,
     panels: { properties: false, plot: false, focus: false },
     browser: { category: null, partId: null },
+    sim: idleSim(),
   });
 }
