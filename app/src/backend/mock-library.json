@@ -620,23 +620,23 @@
             },
             {
               "id": "4",
+              "name": "2Y",
+              "x": 80,
+              "y": 45,
+              "optional": true
+            },
+            {
+              "id": "5",
               "name": "2A",
               "x": 0,
               "y": 40,
               "optional": true
             },
             {
-              "id": "5",
+              "id": "6",
               "name": "2B",
               "x": 0,
               "y": 50,
-              "optional": true
-            },
-            {
-              "id": "6",
-              "name": "2Y",
-              "x": 80,
-              "y": 45,
               "optional": true
             },
             {
@@ -648,23 +648,23 @@
             },
             {
               "id": "8",
-              "name": "3Y",
-              "x": 80,
-              "y": 95,
-              "optional": true
-            },
-            {
-              "id": "9",
               "name": "3A",
               "x": 0,
               "y": 90,
               "optional": true
             },
             {
-              "id": "10",
+              "id": "9",
               "name": "3B",
               "x": 0,
               "y": 100,
+              "optional": true
+            },
+            {
+              "id": "10",
+              "name": "3Y",
+              "x": 80,
+              "y": 95,
               "optional": true
             },
             {

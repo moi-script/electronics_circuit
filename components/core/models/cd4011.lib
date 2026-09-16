@@ -1,5 +1,5 @@
 * CD4011 quad 2-input NAND (XSPICE digital, thresholds for 5 V supply) - multysm core pack
-.subckt CD4011 a1 b1 y1 a2 b2 y2 vss y3 a3 b3 y4 a4 b4 vdd
+.subckt CD4011 a1 b1 y1 y2 a2 b2 vss a3 b3 y3 y4 a4 b4 vdd
 Rpwr vdd vss 1e6
 Ain [a1 b1 a2 b2 a3 b3 a4 b4] [da1 db1 da2 db2 da3 db3 da4 db4] cmos_in
 Ag1 [da1 db1] dy1 cmos_nand

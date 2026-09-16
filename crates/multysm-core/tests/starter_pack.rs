@@ -408,6 +408,14 @@ fn ttl_7432_or_truth_table() {
 #[test]
 fn cmos_4011_nand_truth_table() {
     two_input_truth_table("cmos.4011", ("14", "7"), 4.5, [true, true, true, false]);
+    // Exercise the other three gates too (CD4011B datasheet pinout: 5,6->4; 8,9->10; 12,13->11).
+    let expect = [true, true, true, false];
+    for (a_pin, b_pin, out_pin) in [("5", "6", "4"), ("8", "9", "10"), ("12", "13", "11")] {
+        for ((a, b), high) in [("0", "0"), ("0", "5"), ("5", "0"), ("5", "5")].into_iter().zip(expect) {
+            let y = gate_output("cmos.4011", ("14", "7"), &[(a_pin, a), (b_pin, b)], out_pin);
+            assert_level(&format!("cmos.4011({a_pin},{b_pin}->{out_pin})({a},{b})"), y, high, 4.5);
+        }
+    }
 }
 
 #[test]
