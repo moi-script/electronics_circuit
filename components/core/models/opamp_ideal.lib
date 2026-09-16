@@ -1,7 +1,6 @@
 * Ideal op-amp - multysm core pack (not a vendor model).
 * Open-loop gain 1e5, input resistance 1e12, output 1 ohm, output limited to the supply pins.
-* Modeled as a transconductance stage into a lightly damped pole (chosen purely for
-* DC/transient solver stability, not for any target bandwidth) followed by a
+* Modeled as a transconductance stage into a lightly damped pole followed by a
 * rail-clamped output stage, rather than a single hard-clamped high-gain source:
 * ngspice's Newton solver cannot reliably converge on a bare
 * `min(max(1e5*Vid, ...))` source because its derivative collapses to zero the
@@ -10,10 +9,13 @@
 * frequency this part should ever be used at: gm=1e-3, R1=100Meg gives the
 * required DC gain gm*R1=1e5, and C1=0.1p keeps GBW = gm/(2*pi*C1) ~= 1.6 GHz,
 * so the part still behaves as an "ideal" (effectively infinite-bandwidth)
-* op-amp for any realistic AC/transient circuit.
+* op-amp for any realistic AC/transient circuit. The Bgm input clamp is scaled by
+* the supply rails (not a fixed voltage) so the internal node n1 can only wind up
+* to about 1 V beyond vpos/vneg instead of drifting to +-1000 V while saturated,
+* which keeps recovery from overdrive fast.
 .subckt OPAMP_IDEAL inp inn out vpos vneg
 Rin inp inn 1e12
-Bgm 0 n1 I = 1e-3*max(min(V(inp)-V(inn), 1e-2), -1e-2)
+Bgm 0 n1 I = 1e-3*max(min(V(inp)-V(inn), (V(vpos)+1)/1e5), (V(vneg)-1)/1e5)
 R1 n1 0 100Meg
 C1 n1 0 0.1p
 Bout oint 0 V = min(max(V(n1), V(vneg)), V(vpos))

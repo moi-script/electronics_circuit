@@ -10,7 +10,14 @@ use walkdir::WalkDir;
 use super::manifest::{Manifest, ParamKind};
 use super::spice_policy::check_spice_text;
 use crate::netlist::template::placeholders;
-use crate::netlist::validate::is_valid_text_param;
+/// Allowlist for `choice` param option values: they are substituted directly into ngspice
+/// `PARAMS:` text, so `(`, `)`, `=`, `,` and `*` (which would break that syntax) are rejected.
+fn is_valid_choice_option(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '+' | '-'))
+}
 
 const MANIFEST_SCHEMA: &str = include_str!("../../../../schemas/manifest.schema.json");
 
@@ -142,7 +149,7 @@ fn load_part(
         }
         for option in &param.options {
             let value = &option.value;
-            if value.is_empty() || value.chars().any(char::is_whitespace) || !is_valid_text_param(value) {
+            if !is_valid_choice_option(value) {
                 problems.push(format!("param '{}' option value '{value}' is not allowed", param.key));
             }
         }

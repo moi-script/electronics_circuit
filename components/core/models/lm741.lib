@@ -8,5 +8,5 @@ R1 n1 0 200Meg
 C1 n1 0 159p
 Bout oint 0 V = min(max(V(n1), V(vneg)+1.5), V(vpos)-1.5)
 Rout oint out 75
-Rq vpos vneg 6k
+Rq vpos vneg 18k
 .ends LM741

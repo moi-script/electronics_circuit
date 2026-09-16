@@ -334,7 +334,7 @@ fn ideal_opamp_inverting_gain_is_minus_ten() {
     let out = inverting_amp("analog.opamp_ideal", "0.1");
     assert!((out + 1.0).abs() < 0.01, "ideal op-amp out = {out}");
     let overdriven = inverting_amp("analog.opamp_ideal", "2");
-    assert!((-12.01..=12.01).contains(&overdriven), "overdriven out = {overdriven}");
+    assert!((-12.01..-11.9).contains(&overdriven), "overdriven out should sit at the negative rail, got {overdriven}");
 }
 
 #[test]

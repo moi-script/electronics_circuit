@@ -310,6 +310,13 @@ fn unsafe_choice_value_becomes_an_issue() {
 }
 
 #[test]
+fn choice_value_with_spice_syntax_characters_becomes_an_issue() {
+    let lib = load_switch("1)", Some(r#"[{ "label": "Bad", "value": "1)" }]"#));
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues[0].message.contains("option value '1)' is not allowed"), "{:?}", lib.issues);
+}
+
+#[test]
 fn params_template_and_brace_expressions_in_a_subckt_load() {
     let tmp = tempfile::tempdir().unwrap();
     write(tmp.path(), "p.svg", "<svg/>");
