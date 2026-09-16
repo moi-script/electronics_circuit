@@ -5,6 +5,7 @@ pub mod engine;
 pub mod library;
 pub mod netlist;
 pub mod project_file;
+pub mod results;
 pub mod si;
 
 use std::sync::atomic::AtomicBool;
