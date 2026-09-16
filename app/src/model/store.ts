@@ -66,16 +66,19 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
     const withSelectedComponent = (mutate: (c: ComponentInstance) => void) => {
       const selection = get().selection;
       if (selection?.kind !== "component") return;
+      if (!get().project.components.some((c) => c.uid === selection.uid)) return;
       commit((d) => {
         const c = d.components.find((c) => c.uid === selection.uid);
         if (c) mutate(c);
       });
     };
-    const withComponent = (uid: string, mutate: (c: ComponentInstance) => void) =>
+    const withComponent = (uid: string, mutate: (c: ComponentInstance) => void) => {
+      if (!get().project.components.some((c) => c.uid === uid)) return;
       commit((d) => {
         const c = d.components.find((c) => c.uid === uid);
         if (c) mutate(c);
       });
+    };
     const componentUids = () => get().project.components.map((c) => c.uid);
     const references = () => get().project.components.map((c) => c.ref);
 

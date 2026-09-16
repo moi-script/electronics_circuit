@@ -119,6 +119,38 @@ describe("editor store", () => {
     expect(s().filePath).toBeNull();
   });
 
+  it("does not dirty the project on no-op edits to a missing or wrong-kind selection", () => {
+    const uid = s().placePart("basic.resistor", [0, 0])!;
+    const wire = s().addWire([[0, 10], [100, 10]])!;
+    s().markSaved("C:/demo.msym");
+    const { project, past, future, dirty } = s();
+    expect(dirty).toBe(false);
+
+    s().setParam("nope", "resistance", "4.7k");
+    expect(s().project).toBe(project);
+    expect(s().past).toBe(past);
+    expect(s().future).toBe(future);
+    expect(s().dirty).toBe(false);
+
+    s().setReference("nope", "RLOAD");
+    expect(s().project).toBe(project);
+    expect(s().past).toBe(past);
+    expect(s().dirty).toBe(false);
+
+    s().select({ kind: "wire", uid: wire });
+    s().rotateSelected();
+    expect(comp(uid).rot).toBe(0);
+    expect(s().project).toBe(project);
+    expect(s().past).toBe(past);
+    expect(s().dirty).toBe(false);
+
+    s().mirrorSelected();
+    expect(comp(uid).mirror).toBe(false);
+    expect(s().project).toBe(project);
+    expect(s().past).toBe(past);
+    expect(s().dirty).toBe(false);
+  });
+
   it("toggles panels and updates the view without dirtying", () => {
     expect(s().panels.parts).toBe(true);
     s().togglePanel("parts");
