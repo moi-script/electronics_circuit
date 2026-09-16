@@ -26,26 +26,54 @@ async function clickWorld(page: Page, point: World) {
   await page.mouse.click(p.x, p.y);
 }
 
-async function placeViaPalette(page: Page, query: string, at: World) {
+async function placeViaBrowser(page: Page, query: string, at: World) {
   await page.keyboard.press("Control+K");
-  await page.getByPlaceholder("Search parts to place…").fill(query);
+  await page.getByPlaceholder("Search components…").fill(query);
   await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Add component" })).toBeHidden();
   await clickWorld(page, at);
 }
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "place Resistor" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Components" })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => {
+      const store = (window as unknown as { __multysm?: { getState(): { library: unknown } } }).__multysm;
+      return !!store && store.getState().library !== null;
+    }))
+    .toBe(true);
 });
 
 test("shows the soft-dark layout", async ({ page }) => {
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(27, 29, 35)");
-  await expect(page.getByRole("button", { name: /^category / })).toHaveCount(15);
   await expect(page.getByRole("button", { name: "▶ Run" })).toBeDisabled();
+  await page.getByRole("button", { name: "Components" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add component" });
+  await expect(dialog.getByRole("button", { name: /^group / })).toHaveCount(15);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
+test("browses groups and places a transistor", async ({ page }) => {
+  await page.getByRole("button", { name: "Components" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add component" });
+  await dialog.getByRole("button", { name: "group Transistors" }).click();
+  await dialog.getByRole("option", { name: /NPN Transistor 2N2222/ }).click();
+  const preview = dialog.getByTestId("symbol-preview");
+  await expect(preview.getByTestId("pin-B")).toHaveText("B");
+  await expect(preview.getByTestId("pin-C")).toHaveText("C");
+  await expect(preview.getByTestId("pin-E")).toHaveText("E");
+  await dialog.getByRole("button", { name: "Place" }).click();
+  await expect(dialog).toBeHidden();
+  await clickWorld(page, [300, 300]);
+  const { project } = await editor(page);
+  expect(project.components).toHaveLength(1);
+  expect(project.components[0]).toMatchObject({ part: "transistors.2n2222", ref: "Q1" });
 });
 
 test("places, rotates and deletes a part", async ({ page }) => {
-  await placeViaPalette(page, "resistor", [200, 200]);
+  await placeViaBrowser(page, "resistor", [200, 200]);
   let state = await editor(page);
   expect(state.project.components).toHaveLength(1);
   expect(state.project.components[0]).toMatchObject({ ref: "R1", x: 200, y: 200 });
@@ -59,8 +87,8 @@ test("places, rotates and deletes a part", async ({ page }) => {
 });
 
 test("wires two resistors with an orthogonal route", async ({ page }) => {
-  await placeViaPalette(page, "resistor", [100, 100]);
-  await placeViaPalette(page, "resistor", [300, 200]);
+  await placeViaBrowser(page, "resistor", [100, 100]);
+  await placeViaBrowser(page, "resistor", [300, 200]);
   await page.keyboard.press("w");
   await clickWorld(page, [160, 110]); // R1 pin 2
   await clickWorld(page, [300, 210]); // R2 pin 1
@@ -71,7 +99,7 @@ test("wires two resistors with an orthogonal route", async ({ page }) => {
 });
 
 test("undoes and redoes", async ({ page }) => {
-  await placeViaPalette(page, "capacitor", [200, 200]);
+  await placeViaBrowser(page, "capacitor", [200, 200]);
   await page.keyboard.press("Control+Z");
   expect((await editor(page)).project.components).toHaveLength(0);
   await page.keyboard.press("Control+Y");
@@ -79,7 +107,7 @@ test("undoes and redoes", async ({ page }) => {
 });
 
 test("saves and reopens a project", async ({ page }) => {
-  await placeViaPalette(page, "led", [200, 200]);
+  await placeViaBrowser(page, "led (red)", [200, 200]);
   await page.keyboard.press("Control+S");
   await expect.poll(async () => (await editor(page)).filePath).toBe("untitled.msym");
   expect((await editor(page)).dirty).toBe(false);
@@ -91,9 +119,9 @@ test("saves and reopens a project", async ({ page }) => {
 
 test("focus mode hides and restores the panels", async ({ page }) => {
   await page.keyboard.press("F11");
-  await expect(page.getByRole("button", { name: "place Resistor" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Exit focus" }).click();
-  await expect(page.getByRole("button", { name: "place Resistor" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
 });
 
 test("zooms with the wheel and pans with middle drag", async ({ page }) => {
