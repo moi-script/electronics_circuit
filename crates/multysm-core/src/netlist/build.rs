@@ -111,6 +111,15 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
                     ));
                     continue;
                 }
+                ParamKind::Choice if param.options.iter().any(|o| &o.value == raw) => raw.clone(),
+                ParamKind::Choice => {
+                    errors.push(NetlistError::new(
+                        ErrorCode::InvalidParam,
+                        format!("{}: {} '{}' is not one of the options", inst.reference, param.label, raw),
+                        Some(inst.uid.as_str()),
+                    ));
+                    continue;
+                }
                 ParamKind::Si => match parse_si(raw) {
                     Ok(v) => format_spice(v),
                     Err(_) => {

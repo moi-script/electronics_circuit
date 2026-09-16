@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { editorStore } from "@/model/store";
-import { resetEditor } from "@/test/resetEditor";
+import { resetEditor, testLibrary } from "@/test/resetEditor";
+import type { PartDef } from "@/model/types";
 import PropertiesPanel from "./PropertiesPanel";
 
 const state = () => editorStore.getState();
@@ -87,5 +88,30 @@ describe("PropertiesPanel", () => {
     expect(state().project.components[0]).toMatchObject({ rot: 90, mirror: true });
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(state().project.components.find((c) => c.uid === uid)).toBeUndefined();
+  });
+
+  it("edits a choice param with a select", () => {
+    const testSwitch: PartDef = {
+      svg: "<svg/>",
+      refPrefix: "S",
+      manifest: {
+        schema: 1, id: "basic.test_switch", name: "Test Switch", category: "Basic", tags: [],
+        symbol: { width: 60, height: 20, svg: "s.svg", pins: [{ id: "1", x: 0, y: 10 }, { id: "2", x: 60, y: 10 }] },
+        params: [{
+          key: "closed", label: "State", default: "0", type: "choice",
+          options: [{ label: "Open", value: "0" }, { label: "Closed", value: "1" }],
+        }],
+        spice: { kind: "analog", refPrefix: "S", template: "X{ref} {pin.1} {pin.2} SW_SPST PARAMS: S={closed}" },
+      },
+    };
+    resetEditor({ ...testLibrary, parts: [...testLibrary.parts, testSwitch] });
+    const id = state().placePart("basic.test_switch", [100, 100])!;
+    render(<PropertiesPanel />);
+    const select = screen.getByLabelText("State") as HTMLSelectElement;
+    expect(select.tagName).toBe("SELECT");
+    expect(select.value).toBe("0");
+    expect(screen.getByRole("option", { name: "Closed" })).toBeTruthy();
+    fireEvent.change(select, { target: { value: "1" } });
+    expect(state().project.components.find((c) => c.uid === id)!.params.closed).toBe("1");
   });
 });

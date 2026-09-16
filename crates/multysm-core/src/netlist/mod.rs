@@ -3,7 +3,7 @@
 mod build;
 mod nets;
 pub mod template;
-mod validate;
+pub(crate) mod validate;
 
 pub use build::{build_netlist, Netlist};
 pub use nets::{build_nets, Nets, PinKey, GROUND};

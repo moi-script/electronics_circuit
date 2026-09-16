@@ -276,3 +276,41 @@ fn rotation_that_is_not_a_right_angle_is_an_error() {
     assert!(errors.iter().any(|e| e.code == ErrorCode::InvalidRotation
         && e.component_uid.as_deref() == Some(project.components[2].uid.as_str())));
 }
+
+#[test]
+fn choice_params_render_their_value_and_reject_other_values() {
+    let tmp = tempfile::tempdir().unwrap();
+    let put = |rel: &str, text: &str| std::fs::write(tmp.path().join(rel), text).unwrap();
+    put("g.svg", "<svg/>");
+    put("s.svg", "<svg/>");
+    put("ground.json", r#"{ "schema": 1, "id": "sources.ground", "name": "Ground", "category": "Sources",
+      "symbol": { "width": 20, "height": 20, "svg": "g.svg", "pins": [{ "id": "1", "x": 10, "y": 0 }] },
+      "spice": { "kind": "ground" } }"#);
+    put("switch.json", r#"{ "schema": 1, "id": "basic.switch", "name": "Switch", "category": "Basic",
+      "symbol": { "width": 60, "height": 20, "svg": "s.svg",
+                  "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "2", "x": 60, "y": 10 }] },
+      "params": [{ "key": "closed", "label": "State", "default": "1e12", "type": "choice",
+                   "options": [{ "label": "Open", "value": "1e12" }, { "label": "Closed", "value": "1m" }] }],
+      "spice": { "kind": "analog", "refPrefix": "R", "template": "{ref} {pin.1} {pin.2} {closed}" } }"#);
+    let lib = multysm_core::library::load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.issues.is_empty(), "{:?}", lib.issues);
+
+    for (value, accepted) in [("1m", true), ("5", false)] {
+        let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+        let gnd = b.add("sources.ground", "GND1", &[]);
+        let s1 = b.add("basic.switch", "R1", &[("closed", value)]);
+        b.connect((&s1, "1"), (&gnd, "1"));
+        b.connect((&s1, "2"), (&gnd, "1"));
+        match build_netlist(&b.build(), &lib) {
+            Ok(netlist) => {
+                assert!(accepted, "value {value} should be rejected");
+                assert!(netlist.text.contains("R1 0 0 1m"), "{}", netlist.text);
+            }
+            Err(errors) => {
+                assert!(!accepted, "value {value} should render: {errors:?}");
+                assert!(errors.iter().any(|e| e.code == ErrorCode::InvalidParam
+                    && e.message.contains("'5' is not one of the options")), "{errors:?}");
+            }
+        }
+    }
+}

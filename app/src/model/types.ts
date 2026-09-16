@@ -19,12 +19,19 @@ export interface Pin {
   optional?: boolean;
 }
 
+export interface ChoiceOption {
+  label: string;
+  value: string;
+}
+
 export interface Param {
   key: string;
   label: string;
   unit?: string;
   default: string;
-  type: "si" | "text";
+  type: "si" | "text" | "choice";
+  /** Present for `choice` params. */
+  options?: ChoiceOption[];
 }
 
 export interface Manifest {

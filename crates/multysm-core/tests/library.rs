@@ -250,3 +250,82 @@ fn param_key_ref_is_reserved() {
     assert!(lib.parts.is_empty());
     assert!(lib.issues.iter().any(|i| i.message.starts_with("schema:")), "{:?}", lib.issues);
 }
+
+const SWITCH: &str = r#"{
+  "schema": 1, "id": "basic.switch", "name": "Switch", "category": "Basic",
+  "symbol": { "width": 60, "height": 20, "svg": "s.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "2", "x": 60, "y": 10 }] },
+  "params": [{ "key": "closed", "label": "State", "default": "DEFAULT", "type": "choice" OPTIONS }],
+  "spice": { "kind": "analog", "refPrefix": "R", "template": "{ref} {pin.1} {pin.2} {closed}" }
+}"#;
+
+const OPEN_CLOSED: &str =
+    r#"[{ "label": "Open", "value": "1e12" }, { "label": "Closed", "value": "1m" }]"#;
+
+fn switch(default: &str, options: Option<&str>) -> String {
+    let options = options.map(|o| format!(r#", "options": {o}"#)).unwrap_or_default();
+    SWITCH.replace("DEFAULT", default).replace(" OPTIONS", &options)
+}
+
+fn load_switch(default: &str, options: Option<&str>) -> multysm_core::library::Library {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "s.svg", "<svg/>");
+    write(tmp.path(), "switch.json", &switch(default, options));
+    load_library(&[tmp.path().to_path_buf()])
+}
+
+#[test]
+fn choice_param_loads_with_its_options() {
+    let lib = load_switch("1e12", Some(OPEN_CLOSED));
+    assert!(lib.issues.is_empty(), "{:?}", lib.issues);
+    let param = &lib.get("basic.switch").unwrap().manifest.params[0];
+    assert_eq!(param.kind, ParamKind::Choice);
+    assert_eq!(param.options.len(), 2);
+    assert_eq!(param.options[1].label, "Closed");
+    assert_eq!(param.options[1].value, "1m");
+}
+
+#[test]
+fn choice_param_without_options_becomes_an_issue() {
+    for options in [None, Some("[]")] {
+        let lib = load_switch("1e12", options);
+        assert!(lib.parts.is_empty());
+        assert!(lib.issues.iter().any(|i| i.message.starts_with("schema:")), "{:?}", lib.issues);
+    }
+}
+
+#[test]
+fn choice_default_outside_the_options_becomes_an_issue() {
+    let lib = load_switch("2", Some(OPEN_CLOSED));
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues[0].message.contains("default '2' is not one of its options"), "{:?}", lib.issues);
+}
+
+#[test]
+fn unsafe_choice_value_becomes_an_issue() {
+    let lib = load_switch("1 $x", Some(r#"[{ "label": "Bad", "value": "1 $x" }]"#));
+    assert!(lib.parts.is_empty());
+    assert!(lib.issues[0].message.contains("option value '1 $x' is not allowed"), "{:?}", lib.issues);
+}
+
+#[test]
+fn params_template_and_brace_expressions_in_a_subckt_load() {
+    let tmp = tempfile::tempdir().unwrap();
+    write(tmp.path(), "p.svg", "<svg/>");
+    write(
+        tmp.path(),
+        "pot.lib",
+        ".subckt POT a w b params: R=10000 P=0.5\nR1 a w {max(R*P, 1e-3)}\nR2 w b {max(R*(1-P), 1e-3)}\n.ends POT\n",
+    );
+    write(tmp.path(), "pot.json", r#"{
+      "schema": 1, "id": "basic.pot", "name": "Pot", "category": "Basic",
+      "symbol": { "width": 60, "height": 30, "svg": "p.svg",
+                  "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "w", "x": 30, "y": 30 }, { "id": "2", "x": 60, "y": 10 }] },
+      "params": [{ "key": "resistance", "label": "Resistance", "default": "10k", "type": "si" },
+                 { "key": "position", "label": "Position", "default": "0.5", "type": "si" }],
+      "spice": { "kind": "analog", "refPrefix": "RV", "subckt": "pot.lib",
+                 "template": "X{ref} {pin.1} {pin.w} {pin.2} POT PARAMS: R={resistance} P={position}" }
+    }"#);
+    let lib = load_library(&[tmp.path().to_path_buf()]);
+    assert!(lib.issues.is_empty(), "{:?}", lib.issues);
+}

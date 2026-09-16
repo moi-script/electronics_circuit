@@ -7,9 +7,10 @@ use std::path::{Component, Path, PathBuf};
 use serde::Serialize;
 use walkdir::WalkDir;
 
-use super::manifest::Manifest;
+use super::manifest::{Manifest, ParamKind};
 use super::spice_policy::check_spice_text;
 use crate::netlist::template::placeholders;
+use crate::netlist::validate::is_valid_text_param;
 
 const MANIFEST_SCHEMA: &str = include_str!("../../../../schemas/manifest.schema.json");
 
@@ -135,6 +136,23 @@ fn load_part(
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     let mut problems = Vec::new();
+    for param in &manifest.params {
+        if param.kind != ParamKind::Choice {
+            continue;
+        }
+        for option in &param.options {
+            let value = &option.value;
+            if value.is_empty() || value.chars().any(char::is_whitespace) || !is_valid_text_param(value) {
+                problems.push(format!("param '{}' option value '{value}' is not allowed", param.key));
+            }
+        }
+        if !param.options.iter().any(|o| o.value == param.default) {
+            problems.push(format!(
+                "param '{}' default '{}' is not one of its options",
+                param.key, param.default
+            ));
+        }
+    }
     let symbol_path = resolve_file(root, &dir, &manifest.symbol.svg, "symbol")
         .map_err(|e| problems.push(e))
         .ok();

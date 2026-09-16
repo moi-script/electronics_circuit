@@ -92,6 +92,15 @@ pub struct Param {
     pub default: String,
     #[serde(rename = "type")]
     pub kind: ParamKind,
+    /// Allowed values for `choice` params; empty for other kinds.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<ChoiceOption>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChoiceOption {
+    pub label: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,6 +108,7 @@ pub struct Param {
 pub enum ParamKind {
     Si,
     Text,
+    Choice,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
