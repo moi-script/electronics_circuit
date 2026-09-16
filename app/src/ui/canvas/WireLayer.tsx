@@ -6,6 +6,7 @@ import { editorStore, type Selection } from "@/model/store";
 import type { PartDef, Project } from "@/model/types";
 import { danglingEnds, junctionPoints } from "@/model/wiring";
 import { tokens } from "@/theme/tokens";
+import { isSpaceHeld } from "./spaceHeld";
 
 interface Props {
   project: Project;
@@ -34,6 +35,7 @@ export default function WireLayer({ project, parts, selection, selectable }: Pro
             listening={selectable}
             onMouseDown={(e) => {
               if (e.evt.button !== 0) return;
+              if (isSpaceHeld()) return; // let the click bubble to the Stage so Space+drag can pan
               e.cancelBubble = true;
               editorStore.getState().select({ kind: "wire", uid: wire.uid });
             }}

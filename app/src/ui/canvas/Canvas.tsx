@@ -8,6 +8,7 @@ import { editorStore, useEditor } from "@/model/store";
 import type { Point } from "@/model/types";
 import { partMap } from "@/model/wiring";
 import PartNode from "./PartNode";
+import { isSpaceHeld, useSpaceHeld } from "./spaceHeld";
 import WireLayer from "./WireLayer";
 import { gridStyle, screenToWorld, zoomAt } from "./viewport";
 
@@ -24,29 +25,11 @@ function useElementSize(ref: RefObject<HTMLDivElement | null>) {
   return size;
 }
 
-function useSpaceHeld() {
-  const held = useRef(false);
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !(e.target instanceof HTMLInputElement)) held.current = true;
-    };
-    const up = (e: KeyboardEvent) => {
-      if (e.code === "Space") held.current = false;
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
-  return held;
-}
-
 export default function Canvas() {
   const container = useRef<HTMLDivElement>(null);
   const size = useElementSize(container);
-  const spaceHeld = useSpaceHeld();
+  // Reactive so children (parts/wires) re-render and drop `draggable` before a Space+drag pan starts.
+  useSpaceHeld();
   const project = useEditor((s) => s.project);
   const library = useEditor((s) => s.library);
   const tool = useEditor((s) => s.tool);
@@ -71,7 +54,7 @@ export default function Canvas() {
   };
 
   const onMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.evt.button === 1 || (e.evt.button === 0 && spaceHeld.current)) {
+    if (e.evt.button === 1 || (e.evt.button === 0 && isSpaceHeld())) {
       e.evt.preventDefault();
       panStart.current = { mouse: [e.evt.clientX, e.evt.clientY], pan };
       return;

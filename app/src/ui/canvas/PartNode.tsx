@@ -5,6 +5,7 @@ import { partBounds, snapPoint } from "@/model/geometry";
 import { editorStore } from "@/model/store";
 import type { ComponentInstance, PartDef } from "@/model/types";
 import { tokens } from "@/theme/tokens";
+import { isSpaceHeld, useSpaceHeld } from "./spaceHeld";
 import { useSymbolImage } from "./symbolImage";
 
 interface Props {
@@ -22,6 +23,8 @@ export default function PartNode({ inst, part, selected, interactive, ghost = fa
   const bounds = partBounds(inst, part.manifest.symbol);
   const firstParam = part.manifest.params[0];
   const label = firstParam ? `${inst.ref} ${inst.params[firstParam.key] ?? firstParam.default}` : inst.ref;
+  // Reactive so `draggable` updates before Konva's own mousedown-driven drag start.
+  const spaceHeld = useSpaceHeld();
 
   return (
     <>
@@ -32,9 +35,10 @@ export default function PartNode({ inst, part, selected, interactive, ghost = fa
         scaleX={inst.mirror ? -1 : 1}
         opacity={ghost ? 0.5 : 1}
         listening={interactive}
-        draggable={interactive}
+        draggable={interactive && !spaceHeld}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return; // let middle-drag pan the stage
+          if (isSpaceHeld()) return; // let the click bubble to the Stage so Space+drag can pan
           e.cancelBubble = true;
           editorStore.getState().select({ kind: "component", uid: inst.uid });
         }}
