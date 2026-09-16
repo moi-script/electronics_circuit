@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { listSignals, tickedKeys, TRACE_COLORS, type PlotSignal } from "@/model/signals";
+import { useEffect, useMemo, useState } from "react";
+import { listSignals, netOfProbe, tickedKeys, TRACE_COLORS, type PlotSignal } from "@/model/signals";
 import { useEditor } from "@/model/store";
 import { partMap } from "@/model/wiring";
 import Chart, { type ChartSeries } from "./Chart";
@@ -22,8 +22,20 @@ export default function PlotDock() {
   const [phase, setPhase] = useState(false);
 
   const result = sim.outcome?.status === "ok" ? sim.outcome.result : null;
-  const signals = useMemo(() => (result ? listSignals(result, project, parts) : []), [result, project, parts]);
-  const savedTicked = useMemo(() => new Set(tickedKeys(signals, project.probes, hiddenAuto)), [signals, project.probes, hiddenAuto]);
+  // listSignals only reads project.components; depending on the whole project would rebuild the
+  // signal list (and, downstream, the uPlot instance) on every pan or zoom.
+  const signals = useMemo(() => (result ? listSignals(result, project, parts) : []), [result, project.components, parts]);
+  const savedTicked = useMemo(
+    () => new Set(result ? tickedKeys(signals, project.probes, hiddenAuto, result) : []),
+    [signals, project.probes, hiddenAuto, result],
+  );
+
+  // A new run outcome starts a fresh tick state: manual/hidden-auto sets from a previous project
+  // (or a previous run's signal set) shouldn't leak into this one.
+  useEffect(() => {
+    setHiddenAuto(new Set());
+    setManual(new Set());
+  }, [sim.outcome]);
   const ticked = useMemo(
     () => signals.filter((s) => savedTicked.has(s.key) || manual.has(s.key)).map((s) => s.key),
     [signals, savedTicked, manual],
@@ -48,7 +60,14 @@ export default function PlotDock() {
         return next;
       });
     } else if (signal.probe) {
-      toggleProbe(signal.probe);
+      const net = signal.key.startsWith("v:") ? signal.key.slice(2) : null;
+      if (net !== null && result && savedTicked.has(signal.key)) {
+        // Unticking a net removes every stored probe that resolves to it, not just the one
+        // (the net's current first pin) that would be used to tick it again.
+        for (const ref of project.probes) if (netOfProbe(ref, result) === net) toggleProbe(ref);
+      } else {
+        toggleProbe(signal.probe);
+      }
     } else {
       setManual((prev) => {
         const next = new Set(prev);

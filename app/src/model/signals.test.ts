@@ -3,7 +3,7 @@ import { dividerProject } from "@/test/fixtures";
 import { mockSimulate } from "@/backend/mockSimulation";
 import { testLibrary } from "@/test/resetEditor";
 import type { UiResult } from "./simTypes";
-import { listSignals, netNames, probeRef, tickedKeys } from "./signals";
+import { listSignals, netNames, netOfProbe, probeRef, tickedKeys } from "./signals";
 import type { Project } from "./types";
 import { partMap } from "./wiring";
 
@@ -66,10 +66,53 @@ describe("listSignals", () => {
 describe("tickedKeys", () => {
   it("combines auto signals, saved probes and hidden auto signals", () => {
     const project = dividerProject();
-    const signals = listSignals(tran(project), project, parts);
-    const ticked = tickedKeys(signals, [probeRef("c2", "2"), "pin:c99:1", "garbage"], new Set());
+    const result = tran(project);
+    const signals = listSignals(result, project, parts);
+    const ticked = tickedKeys(signals, [probeRef("c2", "2"), "pin:c99:1", "garbage"], new Set(), result);
     expect(ticked).toEqual([signals[0].key]);
     const auto = [{ ...signals[1], auto: true }, signals[0]];
-    expect(tickedKeys(auto, [], new Set([signals[1].key]))).toEqual([]);
+    expect(tickedKeys(auto, [], new Set([signals[1].key]), result)).toEqual([]);
+  });
+
+  it("ticks a net from a saved probe on any of its pins, not only the net's current first pin", () => {
+    const project = dividerProject();
+    const result = tran(project);
+    const signals = listSignals(result, project, parts);
+    // V1's "p" pin is the net's current first (label) pin; R1's "1" pin is on the same net.
+    const net = result.nets.pinNet.find((p) => p.uid === "c1" && p.pin === "p")!.net;
+    expect(result.nets.pinNet.find((p) => p.uid === "c2" && p.pin === "1")!.net).toBe(net);
+    expect(tickedKeys(signals, [probeRef("c2", "1")], new Set(), result)).toContain(`v:${net}`);
+  });
+});
+
+describe("netOfProbe", () => {
+  it("resolves a pin:uid:pin ref to its current net", () => {
+    const project = dividerProject();
+    const result = tran(project);
+    const net = result.nets.pinNet.find((p) => p.uid === "c2" && p.pin === "2")!.net;
+    expect(netOfProbe(probeRef("c2", "2"), result)).toBe(net);
+  });
+
+  it("returns undefined for a malformed or stale ref", () => {
+    const project = dividerProject();
+    const result = tran(project);
+    expect(netOfProbe("garbage", result)).toBeUndefined();
+    expect(netOfProbe("pin:c99:1", result)).toBeUndefined();
+  });
+});
+
+describe("listSignals in AC", () => {
+  it("does not produce voltmeter signals (subtracting dB magnitudes is meaningless)", () => {
+    const project = dividerProject();
+    project.analysis = { type: "ac", start: "10", stop: "100k", pointsPerDecade: 10 };
+    project.components.push({ uid: "c6", part: "indicators.voltmeter", ref: "VM1", x: 400, y: 0, rot: 0, mirror: false, params: {} });
+    project.wires.push(
+      { uid: "w6", points: [[420, 0], [420, -40], [200, -40], [200, 100]] },
+      { uid: "w7", points: [[420, 60], [420, 200], [260, 200]] },
+    );
+    const outcome = mockSimulate(project, testLibrary);
+    if (outcome.status !== "ok") throw new Error(JSON.stringify(outcome));
+    const signals = listSignals(outcome.result, project, parts);
+    expect(signals.some((s) => s.label === "V(VM1)")).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { formatValue } from "@/model/format";
@@ -16,8 +16,18 @@ export interface ChartSeries {
 
 const tickText = (unit: string) => (_u: uPlot, splits: number[]) => splits.map((v) => formatValue(v, unit, { trim: true }).trim());
 
+const data = (x: number[], series: ChartSeries[]) => [x, ...series.map((s) => s.values)] as uPlot.AlignedData;
+
 export default function Chart({ x, xUnit, logX, series }: { x: number[]; xUnit: string; logX: boolean; series: ChartSeries[] }) {
   const host = useRef<HTMLDivElement>(null);
+  const plot = useRef<uPlot | null>(null);
+  // The plot instance only needs to be rebuilt when its structure (which traces, their units,
+  // colors, and the axes) changes; a pan/zoom or a re-run with the same ticked signals should
+  // just push new data into the existing instance instead of tearing it down and losing state.
+  const structure = useMemo(
+    () => JSON.stringify({ keys: series.map((s) => s.key), labels: series.map((s) => s.label), units: series.map((s) => s.unit), colors: series.map((s) => s.color), logX, xUnit }),
+    [series, logX, xUnit],
+  );
 
   useEffect(() => {
     const el = host.current;
@@ -45,14 +55,22 @@ export default function Chart({ x, xUnit, logX, series }: { x: number[]; xUnit: 
       ],
       cursor: { drag: { x: false, y: false } },
     };
-    const plot = new uPlot(options, [x, ...series.map((s) => s.values)] as uPlot.AlignedData, el);
-    const observer = new ResizeObserver(() => plot.setSize(size()));
+    const instance = new uPlot(options, data(x, series), el);
+    plot.current = instance;
+    const observer = new ResizeObserver(() => instance.setSize(size()));
     observer.observe(el);
     return () => {
       observer.disconnect();
-      plot.destroy();
+      instance.destroy();
+      plot.current = null;
     };
-  }, [x, xUnit, logX, series]);
+    // x and series values are pushed via setData below; only the structural key should recreate the plot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structure]);
+
+  useEffect(() => {
+    plot.current?.setData(data(x, series));
+  }, [x, series]);
 
   return <div ref={host} data-testid="chart" className="h-full w-full overflow-hidden text-[11px] text-muted" />;
 }

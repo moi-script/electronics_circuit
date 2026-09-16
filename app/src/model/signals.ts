@@ -57,7 +57,8 @@ export function listSignals(result: UiResult, project: Project, parts: Map<strin
   const meters: PlotSignal[] = [];
   const probed = new Set<string>();
   for (const inst of project.components) {
-    if (inst.part === "indicators.voltmeter") {
+    // Subtracting AC magnitudes (dB) node-to-node is meaningless, so voltmeters are skipped in AC.
+    if (inst.part === "indicators.voltmeter" && result.analysis !== "ac") {
       const p = netValues(byPin.get(`${inst.uid} p`));
       const n = netValues(byPin.get(`${inst.uid} n`));
       if (p && n) meters.push({ key: `vm:${inst.uid}`, label: `V(${inst.ref})`, unit: "V", auto: true, probe: null, values: p.map((v, i) => v - (n[i] ?? 0)) });
@@ -94,8 +95,27 @@ export function listSignals(result: UiResult, project: Project, parts: Map<strin
   return [...meters, ...voltages, ...currents];
 }
 
-export function tickedKeys(signals: PlotSignal[], probes: string[], hiddenAuto: Set<string>): string[] {
+/** The net a saved `pin:<uid>:<pin>` probe currently resolves to, via the live pin→net map, so a
+ * probe keeps ticking its net even after the net's "first pin" (used only for labels) changes.
+ * Returns undefined for a malformed ref or one whose pin no longer exists (a stale probe, which
+ * is simply ignored rather than treated as an error). */
+export function netOfProbe(ref: string, result: UiResult): string | undefined {
+  const parts = ref.split(":");
+  if (parts.length !== 3 || parts[0] !== "pin") return undefined;
+  const [, uid, pin] = parts;
+  return result.nets.pinNet.find((p) => p.uid === uid && p.pin === pin)?.net;
+}
+
+export function tickedKeys(signals: PlotSignal[], probes: string[], hiddenAuto: Set<string>, result: UiResult): string[] {
+  const probedNets = new Set(probes.flatMap((ref) => {
+    const net = netOfProbe(ref, result);
+    return net !== undefined ? [net] : [];
+  }));
   return signals
-    .filter((s) => (s.auto ? !hiddenAuto.has(s.key) : s.probe !== null && probes.includes(s.probe)))
+    .filter((s) => {
+      if (s.auto) return !hiddenAuto.has(s.key);
+      if (s.key.startsWith("v:")) return probedNets.has(s.key.slice(2));
+      return s.probe !== null && probes.includes(s.probe);
+    })
     .map((s) => s.key);
 }
