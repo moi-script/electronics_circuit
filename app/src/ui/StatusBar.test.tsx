@@ -19,7 +19,7 @@ describe("StatusBar problems", () => {
         { code: "unconnected_pin", message: "R1 pin 1 is not connected", componentUid: a, pin: "1" },
         { code: "unconnected_pin", message: "R2 pin 1 is not connected", componentUid: b, pin: "1" },
       ],
-    });
+    }, state().sim.runId);
     render(<StatusBar />);
     const button = screen.getByRole("button", { name: "2 problems" });
     fireEvent.click(button);

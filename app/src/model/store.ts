@@ -26,15 +26,22 @@ export interface SimSlice {
   /** The circuit changed since the outcome was produced. */
   stale: boolean;
   startedAt: number | null;
-  /** Project the running (or last) run was started with. */
-  runProject: Project | null;
+  /** Token identifying the current (or last) run, bumped by every `startRun`. `finishRun` ignores
+   * an outcome whose token doesn't match, so a late result from a superseded run is dropped. */
+  runId: number;
+  /** `revision` recorded when the run started; compared in `finishRun` to detect edits made mid-run. */
+  runRevision: number;
 }
 
-export const idleSim = (): SimSlice => ({ status: "idle", outcome: null, stale: false, startedAt: null, runProject: null });
+export const idleSim = (): SimSlice => ({ status: "idle", outcome: null, stale: false, startedAt: null, runId: 0, runRevision: 0 });
 
 export interface EditorState {
   library: LibraryData | null;
   project: Project;
+  /** Bumped by every project change that would make a running or finished simulation stale
+   * (commits, drags, undo/redo); pan/zoom and probe toggling leave it untouched. Reset on
+   * new/loaded projects. */
+  revision: number;
   filePath: string | null;
   dirty: boolean;
   selection: Selection;
@@ -69,7 +76,7 @@ export interface EditorState {
   rememberBrowser(memory: BrowserMemory): void;
   setView(zoom: number, pan: Point): void;
   startRun(): void;
-  finishRun(outcome: SimOutcome): void;
+  finishRun(outcome: SimOutcome, runId: number): void;
   setAnalysis(analysis: Analysis): void;
   toggleProbe(ref: string): void;
 }
@@ -82,20 +89,23 @@ const freshSession = () => ({
   past: [] as Project[],
   future: [] as Project[],
   sim: idleSim(),
+  revision: 0,
 });
 
 export function createEditorStore(initial: { library?: LibraryData | null; project?: Project } = {}) {
   return createStore<EditorState>()((set, get) => {
     const commit = (mutate: (draft: Project) => void, options: { stale?: boolean } = {}) => {
-      const { project, past, sim } = get();
+      const { project, past, sim, revision } = get();
       const draft = structuredClone(project);
       mutate(draft);
+      const makesStale = options.stale !== false;
       set({
         project: draft,
         past: [...past, project].slice(-HISTORY_LIMIT),
         future: [],
         dirty: true,
-        sim: options.stale === false ? sim : { ...sim, stale: true },
+        sim: makesStale ? { ...sim, stale: true } : sim,
+        revision: makesStale ? revision + 1 : revision,
       });
     };
     const staleSim = () => ({ ...get().sim, stale: true });
@@ -147,8 +157,8 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
       },
 
       beginChange: () => {
-        const { project, past } = get();
-        set({ past: [...past, project].slice(-HISTORY_LIMIT), future: [], dirty: true, sim: staleSim() });
+        const { project, past, revision } = get();
+        set({ past: [...past, project].slice(-HISTORY_LIMIT), future: [], dirty: true, sim: staleSim(), revision: revision + 1 });
       },
 
       moveComponent: (uid, at) => {
@@ -160,6 +170,7 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
           },
           dirty: true,
           sim: { ...state.sim, stale: true },
+          revision: state.revision + 1,
         }));
       },
 
@@ -207,29 +218,33 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
       },
 
       undo: () => {
-        const { past, project, future } = get();
+        const { past, project, future, revision } = get();
         if (past.length === 0) return;
-        set({ project: past[past.length - 1], past: past.slice(0, -1), future: [project, ...future], selection: null, dirty: true, sim: staleSim() });
+        set({ project: past[past.length - 1], past: past.slice(0, -1), future: [project, ...future], selection: null, dirty: true, sim: staleSim(), revision: revision + 1 });
       },
 
       redo: () => {
-        const { past, project, future } = get();
+        const { past, project, future, revision } = get();
         if (future.length === 0) return;
-        set({ project: future[0], past: [...past, project], future: future.slice(1), selection: null, dirty: true, sim: staleSim() });
+        set({ project: future[0], past: [...past, project], future: future.slice(1), selection: null, dirty: true, sim: staleSim(), revision: revision + 1 });
       },
 
       togglePanel: (name) => set((state) => ({ panels: { ...state.panels, [name]: !state.panels[name] } })),
       rememberBrowser: (browser) => set({ browser }),
       setView: (zoom, pan) => set((state) => ({ project: { ...state.project, view: { zoom, pan } } })),
 
-      startRun: () => set({ sim: { status: "running", outcome: get().sim.outcome, stale: get().sim.stale, startedAt: Date.now(), runProject: get().project } }),
+      startRun: () => {
+        const { sim, revision } = get();
+        set({ sim: { ...sim, status: "running", startedAt: Date.now(), runId: sim.runId + 1, runRevision: revision } });
+      },
 
-      finishRun: (outcome) => {
-        const { sim, project, panels } = get();
+      finishRun: (outcome, runId) => {
+        const { sim, revision, panels } = get();
+        if (sim.status !== "running" || sim.runId !== runId) return;
         const status: SimStatus = outcome.status === "ok" ? "done" : outcome.status === "stopped" ? "stopped" : "failed";
         const openPlot = outcome.status === "ok" && outcome.result.analysis !== "op";
         set({
-          sim: { status, outcome, stale: sim.runProject !== null && sim.runProject !== project, startedAt: null, runProject: sim.runProject },
+          sim: { ...sim, status, outcome, stale: revision !== sim.runRevision, startedAt: null },
           panels: openPlot ? { ...panels, plot: true } : panels,
         });
       },

@@ -15,13 +15,14 @@ export function createRunActions(store: EditorStore, backend: Backend): RunActio
     if (s.sim.status === "running") return;
     if (analysisProblem(s.project.analysis, s.project, s.library) !== null) return;
     s.startRun();
+    const runId = store.getState().sim.runId;
     let outcome: SimOutcome;
     try {
       outcome = await backend.simulate(s.project);
     } catch (e) {
       outcome = { status: "engine", message: errorMessage(e), log: [] };
     }
-    store.getState().finishRun(outcome);
+    store.getState().finishRun(outcome, runId);
   };
   const stop = async () => {
     if (store.getState().sim.status === "running") await backend.stopSimulation();

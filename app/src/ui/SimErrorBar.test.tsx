@@ -16,7 +16,7 @@ describe("SimErrorBar", () => {
 
   it("shows engine advice with an expandable log, and closes", () => {
     state().startRun();
-    state().finishRun({ status: "engine", message: "m", log: ["stderr Error: timestep too small"] });
+    state().finishRun({ status: "engine", message: "m", log: ["stderr Error: timestep too small"] }, state().sim.runId);
     render(<SimErrorBar />);
     expect(screen.getByRole("alert")).toHaveTextContent("The simulation didn't converge. Try a smaller max step.");
     fireEvent.click(screen.getByRole("button", { name: "Show log" }));
@@ -27,7 +27,7 @@ describe("SimErrorBar", () => {
 
   it("shows circuit-wide netlist problems and hides when outdated", () => {
     state().startRun();
-    state().finishRun({ status: "netlist", errors: [{ code: "no_ground", message: "The circuit has no ground. Add a Ground part.", componentUid: null }] });
+    state().finishRun({ status: "netlist", errors: [{ code: "no_ground", message: "The circuit has no ground. Add a Ground part.", componentUid: null }] }, state().sim.runId);
     render(<SimErrorBar />);
     expect(screen.getByRole("alert")).toHaveTextContent("no ground");
     act(() => state().setAnalysis({ type: "op" }));

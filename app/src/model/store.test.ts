@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import library from "@/backend/mock-library.json";
+import type { SimOutcome } from "./simTypes";
 import { createEditorStore, HISTORY_LIMIT, idleSim, type EditorStore } from "./store";
 import { emptyProject, type LibraryData } from "./types";
 
 let store: EditorStore;
 const s = () => store.getState();
 const comp = (uid: string) => s().project.components.find((c) => c.uid === uid)!;
+/** Finishes the current run, defaulting to its own token unless a specific (e.g. stale) token is given. */
+const finish = (outcome: SimOutcome, runId: number = s().sim.runId) => s().finishRun(outcome, runId);
 
 beforeEach(() => {
   store = createEditorStore({ library: library as unknown as LibraryData });
@@ -174,11 +177,13 @@ describe("editor store", () => {
     s().startRun();
     expect(s().sim.status).toBe("running");
     expect(s().sim.startedAt).not.toBeNull();
-    s().finishRun({ status: "stopped" });
+    finish({ status: "stopped" });
     expect(s().sim.status).toBe("stopped");
-    s().finishRun({ status: "netlist", errors: [] });
+    s().startRun();
+    finish({ status: "netlist", errors: [] });
     expect(s().sim.status).toBe("failed");
-    s().finishRun({ status: "busy" });
+    s().startRun();
+    finish({ status: "busy" });
     expect(s().sim.status).toBe("failed");
     expect(s().past).toBe(past);
     expect(s().dirty).toBe(false);
@@ -191,18 +196,18 @@ describe("editor store", () => {
       result: { analysis, x: null, signals: [], nets: { pinNet: [], netPins: {}, wireNet: {} } },
     });
     s().startRun();
-    s().finishRun(ok("op"));
+    finish(ok("op"));
     expect(s().panels.plot).toBe(false);
     expect(s().sim.status).toBe("done");
     s().startRun();
-    s().finishRun(ok("tran"));
+    finish(ok("tran"));
     expect(s().panels.plot).toBe(true);
   });
 
   it("marks results stale on circuit edits and undo, not on view, selection or probes", () => {
     const uid = s().placePart("basic.resistor", [0, 0])!;
     s().startRun();
-    s().finishRun({ status: "stopped" });
+    finish({ status: "stopped" });
     expect(s().sim.stale).toBe(false);
     s().setView(2, [5, 5]);
     s().select(null);
@@ -211,7 +216,7 @@ describe("editor store", () => {
     s().setParam(uid, "resistance", "2k");
     expect(s().sim.stale).toBe(true);
     s().startRun();
-    s().finishRun({ status: "stopped" });
+    finish({ status: "stopped" });
     expect(s().sim.stale).toBe(false);
     s().undo();
     expect(s().sim.stale).toBe(true);
@@ -221,8 +226,38 @@ describe("editor store", () => {
     const uid = s().placePart("basic.resistor", [0, 0])!;
     s().startRun();
     s().setParam(uid, "resistance", "2k");
-    s().finishRun({ status: "stopped" });
+    finish({ status: "stopped" });
     expect(s().sim.stale).toBe(true);
+  });
+
+  it("does not mark results stale on pan/zoom or probe toggling during a run", () => {
+    const uid = s().placePart("basic.resistor", [0, 0])!;
+    s().startRun();
+    s().setView(3, [1, 1]);
+    finish({ status: "stopped" });
+    expect(s().sim.stale).toBe(false);
+    s().startRun();
+    s().toggleProbe(`pin:${uid}:1`);
+    finish({ status: "stopped" });
+    expect(s().sim.stale).toBe(false);
+  });
+
+  it("ignores a late outcome from a superseded run", () => {
+    s().startRun();
+    const staleRunId = s().sim.runId;
+    s().newProject();
+    expect(s().sim).toEqual(idleSim());
+    s().finishRun({ status: "stopped" }, staleRunId);
+    expect(s().sim).toEqual(idleSim());
+    expect(s().panels.plot).toBe(false);
+  });
+
+  it("ignores an outcome whose token does not match the current run", () => {
+    s().startRun();
+    const firstRunId = s().sim.runId;
+    s().startRun();
+    finish({ status: "stopped" }, firstRunId);
+    expect(s().sim.status).toBe("running");
   });
 
   it("sets the analysis as an undoable edit and ignores no-ops", () => {

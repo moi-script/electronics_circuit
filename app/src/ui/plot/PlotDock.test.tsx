@@ -18,7 +18,7 @@ const state = () => editorStore.getState();
 function runMock() {
   const outcome = mockSimulate(state().project, testLibrary);
   state().startRun();
-  state().finishRun(outcome);
+  state().finishRun(outcome, state().sim.runId);
 }
 
 beforeEach(() => {

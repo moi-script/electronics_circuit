@@ -43,6 +43,7 @@ export function createFileActions({ store, backend, confirmDiscard, notify }: De
   return {
     newFile: async () => {
       if (!canDiscard()) return;
+      if (store.getState().sim.status === "running") await backend.stopSimulation();
       store.getState().newProject();
       await backend.clearRecovery();
     },
@@ -51,6 +52,7 @@ export function createFileActions({ store, backend, confirmDiscard, notify }: De
       if (!canDiscard()) return;
       const path = await backend.pickOpenPath();
       if (!path) return;
+      if (store.getState().sim.status === "running") await backend.stopSimulation();
       try {
         const project = await backend.openProject(path);
         store.getState().loadProject(project, path);
