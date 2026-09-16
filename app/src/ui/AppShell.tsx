@@ -8,7 +8,7 @@ import { editorStore, useEditor } from "@/model/store";
 import ComponentBrowser from "./ComponentBrowser";
 import { createFileActions } from "./fileActions";
 import FocusToolbar from "./FocusToolbar";
-import PlotDock from "./PlotDock";
+import PlotDock from "./plot/PlotDock";
 import PropertiesPanel from "./PropertiesPanel";
 import RecoveryBanner from "./RecoveryBanner";
 import { createRunActions } from "./runActions";
