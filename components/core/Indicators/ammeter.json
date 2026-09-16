@@ -1,0 +1,9 @@
+{
+  "schema": 1, "id": "indicators.ammeter", "name": "Ammeter", "category": "Indicators",
+  "tags": ["meter", "current", "measure"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/ammeter.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "spice": { "kind": "analog", "refPrefix": "AM", "subckt": "../models/meters.lib",
+             "template": "X{ref} {pin.p} {pin.n} AMMETER" }
+}

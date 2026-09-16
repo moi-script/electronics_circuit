@@ -1,0 +1,18 @@
+{
+  "schema": 1, "id": "indicators.seven_segment", "name": "7-Segment Display (CC)", "category": "Indicators",
+  "tags": ["display", "digit", "segment"],
+  "symbol": { "width": 60, "height": 100, "svg": "../symbols/seven_segment.svg",
+    "pins": [
+      { "id": "a",  "name": "a",  "x": 0,  "y": 10, "optional": true },
+      { "id": "b",  "name": "b",  "x": 0,  "y": 20, "optional": true },
+      { "id": "c",  "name": "c",  "x": 0,  "y": 30, "optional": true },
+      { "id": "d",  "name": "d",  "x": 0,  "y": 40, "optional": true },
+      { "id": "e",  "name": "e",  "x": 0,  "y": 50, "optional": true },
+      { "id": "f",  "name": "f",  "x": 0,  "y": 60, "optional": true },
+      { "id": "g",  "name": "g",  "x": 0,  "y": 70, "optional": true },
+      { "id": "dp", "name": "dp", "x": 0,  "y": 80, "optional": true },
+      { "id": "K",  "name": "K",  "x": 30, "y": 100 }
+    ] },
+  "spice": { "kind": "analog", "refPrefix": "DS", "subckt": "../models/seg7.lib",
+             "template": "X{ref} {pin.a} {pin.b} {pin.c} {pin.d} {pin.e} {pin.f} {pin.g} {pin.dp} {pin.K} SEG7_CC" }
+}

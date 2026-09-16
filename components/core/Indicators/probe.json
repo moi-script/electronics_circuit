@@ -1,0 +1,8 @@
+{
+  "schema": 1, "id": "indicators.probe", "name": "Probe", "category": "Indicators",
+  "tags": ["probe", "measure", "plot"],
+  "symbol": { "width": 20, "height": 30, "svg": "../symbols/probe.svg",
+              "pins": [{ "id": "1", "x": 10, "y": 30 }] },
+  "spice": { "kind": "analog", "refPrefix": "PR", "subckt": "../models/meters.lib",
+             "template": "X{ref} {pin.1} PROBE" }
+}

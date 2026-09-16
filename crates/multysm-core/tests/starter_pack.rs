@@ -446,3 +446,80 @@ fn cmos_4017_counts_on_clock_edges() {
     assert_level("Q2 @2.0ms", at("4", 2.0e-3), true, 4.5);
     assert_level("Q1 @2.0ms", at("2", 2.0e-3), false, 4.5);
 }
+
+// ---- Indicators ----
+
+#[test]
+fn voltmeter_does_not_load_the_circuit() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[("voltage", "10")]);
+    let r1 = b.add("basic.resistor", "R1", &[("resistance", "1k")]);
+    let vm = b.add("indicators.voltmeter", "VM1", &[]);
+    b.connect((&v1, "p"), (&r1, "1"));
+    b.connect((&r1, "2"), (&vm, "p"));
+    b.connect((&vm, "n"), (&gnd, "1"));
+    b.connect((&v1, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    let v = result.last(&net(&netlist, &vm, "p")).unwrap();
+    assert!(v > 9.99, "V(VM1) = {v}");
+}
+
+#[test]
+fn ammeter_reads_the_loop_current() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[("voltage", "5")]);
+    let am = b.add("indicators.ammeter", "AM1", &[]);
+    let r1 = b.add("basic.resistor", "R1", &[("resistance", "1k")]);
+    b.connect((&v1, "p"), (&am, "p"));
+    b.connect((&am, "n"), (&r1, "1"));
+    b.connect((&r1, "2"), (&gnd, "1"));
+    b.connect((&v1, "n"), (&gnd, "1"));
+    let (_, result) = run(&lib, b);
+    let name = result
+        .vectors
+        .keys()
+        .find(|k| k.contains("xam1") && k.ends_with("#branch"))
+        .unwrap_or_else(|| panic!("no ammeter current in {:?}", result.vectors.keys().collect::<Vec<_>>()))
+        .clone();
+    let i = result.last(&name).unwrap().abs();
+    assert!((i - 5e-3).abs() / 5e-3 < 0.01, "I(AM1) = {i}");
+}
+
+#[test]
+fn probes_do_not_load_the_circuit() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[("voltage", "5")]);
+    let r1 = b.add("basic.resistor", "R1", &[("resistance", "1k")]);
+    let pr = b.add("indicators.probe", "PR1", &[]);
+    let lp = b.add("indicators.logic_probe", "LP1", &[]);
+    b.connect((&v1, "p"), (&r1, "1"));
+    b.connect((&r1, "2"), (&pr, "1"));
+    b.connect((&pr, "1"), (&lp, "1"));
+    b.connect((&v1, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    let v = result.last(&net(&netlist, &pr, "1")).unwrap();
+    assert!(v > 4.99, "probed node = {v}");
+}
+
+#[test]
+fn seven_segment_a_lights_through_330_ohms() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let v1 = b.add("sources.dc_voltage", "V1", &[("voltage", "5")]);
+    let r1 = b.add("basic.resistor", "R1", &[("resistance", "330")]);
+    let ds = b.add("indicators.seven_segment", "DS1", &[]);
+    b.connect((&v1, "p"), (&r1, "1"));
+    b.connect((&r1, "2"), (&ds, "a"));
+    b.connect((&ds, "K"), (&gnd, "1"));
+    b.connect((&v1, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    let v = result.last(&net(&netlist, &ds, "a")).unwrap();
+    assert!((1.5..2.1).contains(&v), "segment a forward voltage = {v}");
+}

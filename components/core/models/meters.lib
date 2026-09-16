@@ -1,0 +1,11 @@
+* Meters and probes - multysm core pack (not vendor models).
+* Readouts on the canvas arrive with the simulation UI; these only add harmless elements.
+.subckt VMETER p n
+R1 p n 10Meg
+.ends VMETER
+.subckt AMMETER p n
+Vsense p n DC 0
+.ends AMMETER
+.subckt PROBE p
+R1 p 0 1e12
+.ends PROBE

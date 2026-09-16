@@ -1,0 +1,13 @@
+* Common-cathode 7-segment display - multysm core pack (not a vendor model).
+* One red LED per segment and decimal point, all cathodes on k.
+.subckt SEG7_CC a b c d e f g dp k
+Da a k LED_SEG
+Db b k LED_SEG
+Dc c k LED_SEG
+Dd d k LED_SEG
+De e k LED_SEG
+Df f k LED_SEG
+Dg g k LED_SEG
+Ddp dp k LED_SEG
+.model LED_SEG D(Is=1e-20 N=1.5 Rs=2 BV=5 IBV=10u)
+.ends SEG7_CC

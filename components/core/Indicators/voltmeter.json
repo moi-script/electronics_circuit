@@ -1,0 +1,9 @@
+{
+  "schema": 1, "id": "indicators.voltmeter", "name": "Voltmeter", "category": "Indicators",
+  "tags": ["meter", "voltage", "measure"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/voltmeter.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "spice": { "kind": "analog", "refPrefix": "VM", "subckt": "../models/meters.lib",
+             "template": "X{ref} {pin.p} {pin.n} VMETER" }
+}

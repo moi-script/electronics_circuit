@@ -1,0 +1,8 @@
+{
+  "schema": 1, "id": "indicators.logic_probe", "name": "Logic Probe", "category": "Indicators",
+  "tags": ["probe", "logic", "digital"],
+  "symbol": { "width": 20, "height": 30, "svg": "../symbols/logic_probe.svg",
+              "pins": [{ "id": "1", "x": 10, "y": 30 }] },
+  "spice": { "kind": "analog", "refPrefix": "LP", "subckt": "../models/meters.lib",
+             "template": "X{ref} {pin.1} PROBE" }
+}
