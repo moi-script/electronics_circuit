@@ -6,7 +6,19 @@ import { parseSi } from "@/model/si";
 import { useEditor } from "@/model/store";
 import { partMap } from "@/model/wiring";
 
-/** Text field that validates on commit (Enter or blur) and shows an inline error. */
+/**
+ * Text field that validates on commit (Enter or blur) and shows an inline error.
+ *
+ * Local `value` mirrors `props.initial` (the store's current value) while the
+ * user is not mid-edit. If `props.initial` changes for reasons other than this
+ * field's own commit -- an undo/redo, or another update to the same param --
+ * the field must pick that up rather than keep showing what it last committed;
+ * otherwise a later blur with no further typing would re-send stale data and
+ * clobber the newer value (breaking undo). We detect that by comparing
+ * `props.initial` against the last value we synced from during render, React's
+ * documented pattern for resetting state in response to a prop change without
+ * an extra effect/render flash.
+ */
 function Field(props: {
   label: string;
   unit?: string;
@@ -15,7 +27,13 @@ function Field(props: {
   onCommit: (value: string) => void;
 }) {
   const [value, setValue] = useState(props.initial);
+  const [syncedInitial, setSyncedInitial] = useState(props.initial);
   const [error, setError] = useState<string | null>(null);
+  if (props.initial !== syncedInitial) {
+    setSyncedInitial(props.initial);
+    setValue(props.initial);
+    setError(null);
+  }
   const id = `field-${props.label.replace(/\s+/g, "-").toLowerCase()}`;
   const commit = () => {
     const problem = props.validate(value);

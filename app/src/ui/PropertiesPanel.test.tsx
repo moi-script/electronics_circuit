@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { editorStore } from "@/model/store";
 import { resetEditor } from "@/test/resetEditor";
@@ -47,6 +47,37 @@ describe("PropertiesPanel", () => {
     fireEvent.change(input, { target: { value: "RLOAD" } });
     fireEvent.blur(input);
     expect(state().project.components[0].ref).toBe("RLOAD");
+  });
+
+  it("follows an external change to the same param", () => {
+    render(<PropertiesPanel />);
+    act(() => state().setParam(uid, "resistance", "4.7k"));
+    expect((screen.getByLabelText("Resistance") as HTMLInputElement).value).toBe("4.7k");
+  });
+
+  it("does not re-apply a stale value after undo", () => {
+    render(<PropertiesPanel />);
+    const input = screen.getByLabelText("Resistance") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "4.7k" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(state().project.components[0].params.resistance).toBe("4.7k");
+
+    // undo() also clears selection (store.ts, unchanged here), which would
+    // unmount this panel entirely and trivially "pass" without exercising the
+    // bug. Re-selecting the same component in the same act() batch keeps the
+    // Field instance mounted through the revert, matching the finding's
+    // "the panel stays mounted" premise, so the stale value is still in local
+    // state when blur happens next.
+    act(() => {
+      state().undo();
+      state().select({ kind: "component", uid });
+    });
+    expect(state().project.components[0].params.resistance).toBeUndefined();
+    expect(screen.getByLabelText("Resistance")).toBe(input);
+
+    fireEvent.blur(input);
+    expect(state().project.components[0].params.resistance).toBeUndefined();
+    expect(input.value).toBe("1k");
   });
 
   it("rotates, mirrors and deletes from buttons", () => {
