@@ -1,0 +1,11 @@
+{
+  "schema": 1, "id": "transistors.2n2907", "name": "PNP Transistor 2N2907", "category": "Transistors",
+  "tags": ["bjt", "pnp", "Q"],
+  "symbol": { "width": 40, "height": 40, "svg": "../symbols/pnp.svg",
+              "pins": [{ "id": "C", "name": "C", "x": 30, "y": 0 },
+                       { "id": "B", "name": "B", "x": 0, "y": 20 },
+                       { "id": "E", "name": "E", "x": 30, "y": 40 }] },
+  "spice": { "kind": "analog", "refPrefix": "Q", "template": "{ref} {pin.C} {pin.B} {pin.E} Q2N2907",
+             "models": ["* 2N2907: manufacturer SPICE parameters as published in common SPICE model collections",
+                        ".model Q2N2907 PNP(IS=650.6E-18 XTI=3 EG=1.11 VAF=115.7 BF=231.7 NE=1.829 ISE=54.81f IKF=1.079 XTB=1.5 BR=3.563 NC=2 ISC=0 IKR=0 RC=0.715 CJC=14.76p MJC=0.5383 VJC=0.75 FC=0.5 CJE=19.82p MJE=0.3357 VJE=0.75 TR=111.3n TF=603.7p ITF=0.65 VTF=5 XTF=1.7 RB=10)"] }
+}

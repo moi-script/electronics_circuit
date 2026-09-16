@@ -1,0 +1,11 @@
+{
+  "schema": 1, "id": "transistors.2n2222", "name": "NPN Transistor 2N2222", "category": "Transistors",
+  "tags": ["bjt", "npn", "Q"],
+  "symbol": { "width": 40, "height": 40, "svg": "../symbols/npn.svg",
+              "pins": [{ "id": "C", "name": "C", "x": 30, "y": 0 },
+                       { "id": "B", "name": "B", "x": 0, "y": 20 },
+                       { "id": "E", "name": "E", "x": 30, "y": 40 }] },
+  "spice": { "kind": "analog", "refPrefix": "Q", "template": "{ref} {pin.C} {pin.B} {pin.E} Q2N2222",
+             "models": ["* 2N2222: manufacturer SPICE parameters as published in common SPICE model collections",
+                        ".model Q2N2222 NPN(IS=14.34f XTI=3 EG=1.11 VAF=74.03 BF=255.9 NE=1.307 ISE=14.34f IKF=0.2847 XTB=1.5 BR=6.092 NC=2 ISC=0 IKR=0 RC=1 CJC=7.306p MJC=0.3416 VJC=0.75 FC=0.5 CJE=22.01p MJE=0.377 VJE=0.75 TR=46.91n TF=411.1p ITF=0.6 VTF=1.7 XTF=3 RB=10)"] }
+}

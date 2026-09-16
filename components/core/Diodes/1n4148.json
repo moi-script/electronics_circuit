@@ -1,0 +1,10 @@
+{
+  "schema": 1, "id": "diodes.1n4148", "name": "1N4148 Switching Diode", "category": "Diodes",
+  "tags": ["signal", "fast", "D"],
+  "symbol": { "width": 40, "height": 20, "svg": "../symbols/diode.svg",
+              "pins": [{ "id": "A", "name": "Anode", "x": 0, "y": 10 },
+                       { "id": "K", "name": "Cathode", "x": 40, "y": 10 }] },
+  "spice": { "kind": "analog", "refPrefix": "D", "template": "{ref} {pin.A} {pin.K} D1N4148",
+             "models": ["* 1N4148: manufacturer SPICE parameters as published in common SPICE model collections",
+                        ".model D1N4148 D(IS=4.352n N=1.906 RS=0.6458 BV=110 IBV=0.0001 CJO=7.048p VJ=0.869 M=0.03 FC=0.5 TT=3.48n)"] }
+}

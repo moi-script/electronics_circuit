@@ -180,3 +180,123 @@ fn potentiometer_divides_by_position() {
         assert!((v - expected).abs() / expected < 0.01, "position {position}: {v}");
     }
 }
+
+// ---- Diodes ----
+
+/// Pushes `current` through the diode from anode to cathode (or cathode to
+/// anode when `reverse`) and returns the voltage across it.
+fn diode_voltage(part: &str, current: &str, reverse: bool) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let i1 = b.add("sources.dc_current", "I1", &[("current", current)]);
+    let d1 = b.add(part, "D1", &[]);
+    let (top, bottom) = if reverse { ("K", "A") } else { ("A", "K") };
+    b.connect((&i1, "n"), (&d1, top));
+    b.connect((&d1, bottom), (&gnd, "1"));
+    b.connect((&i1, "p"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &d1, top)).unwrap()
+}
+
+#[test]
+fn diode_forward_drops_are_realistic() {
+    let v4148 = diode_voltage("diodes.1n4148", "1m", false);
+    assert!((0.55..0.75).contains(&v4148), "1N4148 at 1 mA: {v4148}");
+    let v4007 = diode_voltage("diodes.1n4007", "10m", false);
+    assert!((0.55..0.85).contains(&v4007), "1N4007 at 10 mA: {v4007}");
+}
+
+#[test]
+fn zener_holds_its_breakdown_voltage() {
+    let v = diode_voltage("diodes.zener_5v1", "5m", true);
+    assert!((4.9..5.3).contains(&v), "zener at 5 mA reverse: {v}");
+}
+
+// ---- Transistors ----
+
+/// Switch stage: 5 V -> 1k -> the "high side" pin; the control pin is driven
+/// (through 1k for BJTs, directly for the MOSFET) from `drive` volts; the
+/// "low side" pin goes to ground (NPN, NMOS) or 5 V (PNP). Returns V at the
+/// load-side pin.
+fn npn_collector(drive: &str) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vcc = b.add("sources.dc_voltage", "VCC", &[("voltage", "5")]);
+    let vb = b.add("sources.dc_voltage", "VB", &[("voltage", drive)]);
+    let rc = b.add("basic.resistor", "RC", &[("resistance", "1k")]);
+    let rb = b.add("basic.resistor", "RB", &[("resistance", "1k")]);
+    let q1 = b.add("transistors.2n2222", "Q1", &[]);
+    b.connect((&vcc, "p"), (&rc, "1"));
+    b.connect((&rc, "2"), (&q1, "C"));
+    b.connect((&q1, "E"), (&gnd, "1"));
+    b.connect((&vb, "p"), (&rb, "1"));
+    b.connect((&rb, "2"), (&q1, "B"));
+    b.connect((&vb, "n"), (&gnd, "1"));
+    b.connect((&vcc, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &q1, "C")).unwrap()
+}
+
+fn pnp_collector(drive: &str) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vcc = b.add("sources.dc_voltage", "VCC", &[("voltage", "5")]);
+    let vb = b.add("sources.dc_voltage", "VB", &[("voltage", drive)]);
+    let rc = b.add("basic.resistor", "RC", &[("resistance", "1k")]);
+    let rb = b.add("basic.resistor", "RB", &[("resistance", "1k")]);
+    let q1 = b.add("transistors.2n2907", "Q1", &[]);
+    b.connect((&vcc, "p"), (&q1, "E"));
+    b.connect((&q1, "C"), (&rc, "1"));
+    b.connect((&rc, "2"), (&gnd, "1"));
+    b.connect((&vb, "p"), (&rb, "1"));
+    b.connect((&rb, "2"), (&q1, "B"));
+    b.connect((&vb, "n"), (&gnd, "1"));
+    b.connect((&vcc, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &q1, "C")).unwrap()
+}
+
+fn nmos_drain(gate: &str) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vdd = b.add("sources.dc_voltage", "VDD", &[("voltage", "5")]);
+    let vg = b.add("sources.dc_voltage", "VG", &[("voltage", gate)]);
+    let rd = b.add("basic.resistor", "RD", &[("resistance", "1k")]);
+    let m1 = b.add("transistors.2n7000", "M1", &[]);
+    b.connect((&vdd, "p"), (&rd, "1"));
+    b.connect((&rd, "2"), (&m1, "D"));
+    b.connect((&m1, "S"), (&gnd, "1"));
+    b.connect((&vg, "p"), (&m1, "G"));
+    b.connect((&vg, "n"), (&gnd, "1"));
+    b.connect((&vdd, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &m1, "D")).unwrap()
+}
+
+#[test]
+fn npn_switches_on_and_off() {
+    let on = npn_collector("5");
+    let off = npn_collector("0");
+    assert!(on < 0.3, "2N2222 on: Vce = {on}");
+    assert!(off > 4.9, "2N2222 off: Vce = {off}");
+}
+
+#[test]
+fn pnp_switches_on_and_off() {
+    let on = pnp_collector("0");
+    let off = pnp_collector("5");
+    assert!(on > 4.7, "2N2907 on: Vc = {on}");
+    assert!(off < 0.1, "2N2907 off: Vc = {off}");
+}
+
+#[test]
+fn nmos_switches_on_and_off() {
+    let on = nmos_drain("5");
+    let off = nmos_drain("0");
+    assert!(on < 0.3, "2N7000 on: Vds = {on}");
+    assert!(off > 4.9, "2N7000 off: Vds = {off}");
+}

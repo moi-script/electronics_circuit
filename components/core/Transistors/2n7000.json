@@ -1,0 +1,11 @@
+{
+  "schema": 1, "id": "transistors.2n7000", "name": "N-MOSFET 2N7000", "category": "Transistors",
+  "tags": ["mosfet", "nmos", "fet", "M"],
+  "symbol": { "width": 40, "height": 40, "svg": "../symbols/nmos.svg",
+              "pins": [{ "id": "D", "name": "D", "x": 30, "y": 0 },
+                       { "id": "G", "name": "G", "x": 0, "y": 20 },
+                       { "id": "S", "name": "S", "x": 30, "y": 40 }] },
+  "spice": { "kind": "analog", "refPrefix": "M", "template": "{ref} {pin.D} {pin.G} {pin.S} {pin.S} M2N7000",
+             "models": ["* 2N7000: simplified level-1 model written by multysm from datasheet values (Vth 2.1 V); not a vendor model",
+                        ".model M2N7000 NMOS(LEVEL=1 VTO=2.1 KP=0.1 LAMBDA=0.01 RD=1 RS=0.5 CBD=25p CGSO=20p CGDO=3p)"] }
+}

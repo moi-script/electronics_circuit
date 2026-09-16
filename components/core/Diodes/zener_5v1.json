@@ -1,0 +1,10 @@
+{
+  "schema": 1, "id": "diodes.zener_5v1", "name": "Zener Diode 5.1 V (1N4733A)", "category": "Diodes",
+  "tags": ["zener", "regulator", "reference", "D"],
+  "symbol": { "width": 40, "height": 20, "svg": "../symbols/zener.svg",
+              "pins": [{ "id": "A", "name": "Anode", "x": 0, "y": 10 },
+                       { "id": "K", "name": "Cathode", "x": 40, "y": 10 }] },
+  "spice": { "kind": "analog", "refPrefix": "D", "template": "{ref} {pin.A} {pin.K} D1N4733A",
+             "models": ["* 1N4733A: parameters fitted by multysm to the datasheet (5.1 V at 49 mA); not a vendor model",
+                        ".model D1N4733A D(IS=1e-11 N=1.1 RS=1 BV=5.1 IBV=49m CJO=180p VJ=0.75 M=0.33 TT=50n)"] }
+}
