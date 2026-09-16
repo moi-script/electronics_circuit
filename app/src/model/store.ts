@@ -2,14 +2,20 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { simplifyPath, snapPoint } from "./geometry";
 import { nextReference, nextUid } from "./refs";
-import { emptyProject, type ComponentInstance, type LibraryData, type Point, type Project, type Rotation } from "./types";
+import { emptyProject, type Category, type ComponentInstance, type LibraryData, type Point, type Project, type Rotation } from "./types";
 import { partMap } from "./wiring";
 
 export const HISTORY_LIMIT = 100;
 
 export type Tool = { kind: "select" } | { kind: "place"; partId: string } | { kind: "wire"; points: Point[] };
 export type Selection = { kind: "component" | "wire"; uid: string } | null;
-export type PanelName = "parts" | "properties" | "plot" | "focus";
+export type PanelName = "properties" | "plot" | "focus";
+
+/** Last group and part shown in the component browser (session only, never saved). */
+export interface BrowserMemory {
+  category: Category | null;
+  partId: string | null;
+}
 
 export interface EditorState {
   library: LibraryData | null;
@@ -22,6 +28,7 @@ export interface EditorState {
   future: Project[];
   clipboard: ComponentInstance | null;
   panels: Record<PanelName, boolean>;
+  browser: BrowserMemory;
 
   setLibrary(library: LibraryData): void;
   newProject(): void;
@@ -43,6 +50,7 @@ export interface EditorState {
   undo(): void;
   redo(): void;
   togglePanel(name: PanelName): void;
+  rememberBrowser(memory: BrowserMemory): void;
   setView(zoom: number, pan: Point): void;
 }
 
@@ -87,7 +95,8 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
       project: initial.project ?? emptyProject(),
       ...freshSession(),
       clipboard: null,
-      panels: { parts: true, properties: false, plot: false, focus: false },
+      panels: { properties: false, plot: false, focus: false },
+      browser: { category: null, partId: null },
 
       setLibrary: (library) => set({ library }),
       newProject: () => set({ project: emptyProject(), ...freshSession() }),
@@ -181,6 +190,7 @@ export function createEditorStore(initial: { library?: LibraryData | null; proje
       },
 
       togglePanel: (name) => set((state) => ({ panels: { ...state.panels, [name]: !state.panels[name] } })),
+      rememberBrowser: (browser) => set({ browser }),
       setView: (zoom, pan) => set((state) => ({ project: { ...state.project, view: { zoom, pan } } })),
     };
   });

@@ -152,11 +152,20 @@ describe("editor store", () => {
   });
 
   it("toggles panels and updates the view without dirtying", () => {
-    expect(s().panels.parts).toBe(true);
-    s().togglePanel("parts");
-    expect(s().panels.parts).toBe(false);
+    expect(s().panels).toEqual({ properties: false, plot: false, focus: false });
+    s().togglePanel("plot");
+    expect(s().panels.plot).toBe(true);
     s().setView(2, [10, 20]);
     expect(s().project.view).toEqual({ zoom: 2, pan: [10, 20] });
+    expect(s().dirty).toBe(false);
+  });
+
+  it("remembers the component browser position without dirtying", () => {
+    expect(s().browser).toEqual({ category: null, partId: null });
+    s().rememberBrowser({ category: "Diodes", partId: "diodes.led" });
+    expect(s().browser).toEqual({ category: "Diodes", partId: "diodes.led" });
+    s().newProject();
+    expect(s().browser).toEqual({ category: "Diodes", partId: "diodes.led" });
     expect(s().dirty).toBe(false);
   });
 });

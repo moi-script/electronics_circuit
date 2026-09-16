@@ -81,7 +81,7 @@ export default function AppShell() {
     <div className="flex h-full flex-col">
       {!focus && <TopBar onOpenPalette={openPalette} files={files} />}
       <div className="flex min-h-0 flex-1">
-        {!focus && panels.parts && <PartsPanel />}
+        {!focus && <PartsPanel />}
         <main className="relative min-w-0 flex-1">
           <Canvas />
           {focus && <FocusToolbar onOpenPalette={openPalette} />}

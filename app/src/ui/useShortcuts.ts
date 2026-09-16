@@ -41,7 +41,6 @@ export function handleShortcut(e: KeyInput, store: EditorStore, actions: Shortcu
       case "y": s.redo(); return true;
       case "c": s.copySelected(); return true;
       case "v": s.paste(); return true;
-      case "b": s.togglePanel("parts"); return true;
       case "i": s.togglePanel("properties"); return true;
       case "j": s.togglePanel("plot"); return true;
       case "n": return run(actions.newFile);

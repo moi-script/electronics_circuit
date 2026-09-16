@@ -54,11 +54,14 @@ describe("handleShortcut", () => {
     expect(actions.openPalette).toHaveBeenCalledTimes(2);
   });
 
-  it("toggles panels and focus mode", () => {
-    press("b", { ctrl: true });
+  it("toggles the plot dock and focus mode", () => {
     press("j", { ctrl: true });
     press("F11");
-    expect(s().panels).toMatchObject({ parts: false, plot: true, focus: true });
+    expect(s().panels).toMatchObject({ plot: true, focus: true });
+  });
+
+  it("has no Ctrl+B shortcut", () => {
+    expect(press("b", { ctrl: true })).toBe(false);
   });
 
   it("uses file actions only when provided", () => {

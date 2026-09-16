@@ -10,6 +10,7 @@ export function resetEditor(lib: LibraryData | null = testLibrary) {
   editorStore.setState({
     library: lib,
     clipboard: null,
-    panels: { parts: true, properties: false, plot: false, focus: false },
+    panels: { properties: false, plot: false, focus: false },
+    browser: { category: null, partId: null },
   });
 }
