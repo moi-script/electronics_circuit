@@ -106,14 +106,14 @@ export interface SimFeedback {
   showLabels: boolean;
 }
 
-const EMPTY: SimFeedback = { partMessages: new Map(), pinErrors: [], bar: null, problemUids: [], showLabels: false };
+const empty = (): SimFeedback => ({ partMessages: new Map(), pinErrors: [], bar: null, problemUids: [], showLabels: false });
 
 export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
   const outcome: SimOutcome | null = sim.outcome;
-  if (!outcome || sim.stale || sim.status === "running") return EMPTY;
+  if (!outcome || sim.stale || sim.status === "running") return empty();
   switch (outcome.status) {
     case "ok":
-      return { ...EMPTY, showLabels: outcome.result.analysis === "op" };
+      return { ...empty(), showLabels: outcome.result.analysis === "op" };
     case "netlist": {
       const partMessages = new Map<string, string[]>();
       const loose: string[] = [];
@@ -133,17 +133,17 @@ export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
       const uids = partsNamedInLog(outcome.log, project);
       const message = engineMessage(outcome.log);
       return {
-        ...EMPTY,
+        ...empty(),
         partMessages: new Map(uids.map((uid) => [uid, [message]])),
         bar: { message, log: outcome.log },
         problemUids: uids,
       };
     }
     case "timeout":
-      return { ...EMPTY, bar: { message: `Stopped after ${outcome.seconds} s. Try a shorter stop time or a larger max step.`, log: null } };
+      return { ...empty(), bar: { message: `Stopped after ${outcome.seconds} s. Try a shorter stop time or a larger max step.`, log: null } };
     case "busy":
-      return { ...EMPTY, bar: { message: "A simulation is already running.", log: null } };
+      return { ...empty(), bar: { message: "A simulation is already running.", log: null } };
     case "stopped":
-      return EMPTY;
+      return empty();
   }
 }

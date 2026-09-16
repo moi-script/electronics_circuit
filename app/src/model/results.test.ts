@@ -103,4 +103,13 @@ describe("simFeedback", () => {
     expect(simFeedback({ ...idleSim(), status: "done", outcome: ok }, dividerProject()).showLabels).toBe(true);
     expect(simFeedback({ ...idleSim(), status: "done", outcome: ok, stale: true }, dividerProject()).showLabels).toBe(false);
   });
+
+  it("returns a fresh partMessages map on every call", () => {
+    const project = dividerProject();
+    const a = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project);
+    const b = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project);
+    expect(a.partMessages).not.toBe(b.partMessages);
+    expect(a.pinErrors).not.toBe(b.pinErrors);
+    expect(a.problemUids).not.toBe(b.problemUids);
+  });
 });
