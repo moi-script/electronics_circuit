@@ -76,8 +76,17 @@ export default function AnalysisPicker() {
     const onDown = (e: MouseEvent) => {
       if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
     };
+    // Listen on the window, like the outside-click handler above, so Escape closes the popover
+    // even when focus is still on the summary button rather than inside the dialog.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const switchTo = (kind: Kind) => {
@@ -92,13 +101,13 @@ export default function AnalysisPicker() {
   return (
     <div ref={root} className="relative">
       <button className={barButton} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Analysis settings">
-        {analysisSummary(analysis)}
+        {analysisSummary(analysis, project)}
       </button>
       {open && (
         <div
           role="dialog"
           aria-label="Analysis"
-          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } }}
+          aria-modal="true"
           className="absolute right-0 top-9 z-40 w-80 rounded-lg border border-line bg-panel p-3"
         >
           <div role="radiogroup" aria-label="Analysis type" className="grid grid-cols-2 gap-1 border-b border-line pb-2">

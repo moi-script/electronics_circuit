@@ -11,11 +11,17 @@ const withParts = (...parts: [string, string][]): Project => {
 
 describe("analysisSummary", () => {
   it("describes each analysis in plain words", () => {
-    expect(analysisSummary({ type: "op" })).toBe("Operating point");
-    expect(analysisSummary(ANALYSIS_DEFAULTS.tran)).toBe("Transient · 10 ms");
-    expect(analysisSummary(ANALYSIS_DEFAULTS.ac)).toBe("AC · 10 Hz–100 kHz");
-    expect(analysisSummary({ ...ANALYSIS_DEFAULTS.dc, source: "V1" })).toBe("DC sweep · V1 0→5 V");
-    expect(analysisSummary({ type: "tran", stop: "oops", step: "1u" })).toBe("Transient · oops");
+    const project = withParts(["sources.dc_voltage", "V1"]);
+    expect(analysisSummary({ type: "op" }, project)).toBe("Operating point");
+    expect(analysisSummary(ANALYSIS_DEFAULTS.tran, project)).toBe("Transient · 10 ms");
+    expect(analysisSummary(ANALYSIS_DEFAULTS.ac, project)).toBe("AC · 10 Hz–100 kHz");
+    expect(analysisSummary({ ...ANALYSIS_DEFAULTS.dc, source: "V1" }, project)).toBe("DC sweep · V1 0→5 V");
+    expect(analysisSummary({ type: "tran", stop: "oops", step: "1u" }, project)).toBe("Transient · oops");
+  });
+
+  it("takes the DC sweep unit from the swept part, not the reference's first letter", () => {
+    const project = withParts(["sources.dc_current", "V1"]);
+    expect(analysisSummary({ ...ANALYSIS_DEFAULTS.dc, source: "V1" }, project)).toBe("DC sweep · V1 0→5 A");
   });
 });
 

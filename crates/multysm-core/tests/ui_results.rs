@@ -75,6 +75,45 @@ fn dc_sweep_uses_the_source_as_axis() {
 }
 
 #[test]
+fn dc_sweep_unit_follows_the_swept_parts_kind() {
+    let lib = core_library();
+    // Reference "I1" (matches the part's own refPrefix) sweeping an actual dc_current source.
+    let mut b = CircuitBuilder::new(
+        &lib,
+        Analysis::Dc { source: "I1".into(), start: "0".into(), stop: "1m".into(), step: "0.5m".into() },
+    );
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let i1 = b.add("sources.dc_current", "I1", &[("current", "1m")]);
+    let r1 = b.add("basic.resistor", "R1", &[]);
+    b.connect((&i1, "p"), (&r1, "1"));
+    b.connect((&r1, "2"), (&gnd, "1"));
+    b.connect((&i1, "n"), (&gnd, "1"));
+    let project = b.build();
+    let (netlist, result) = simulate(&project, &lib, &engine_config()).unwrap();
+    let ui = to_ui_result(&project, &netlist, &result, MAX_POINTS);
+    assert_eq!(ui.x.as_ref().unwrap().unit, "A");
+}
+
+#[test]
+fn dc_sweep_unit_falls_back_to_v_when_the_swept_reference_is_not_a_project_component() {
+    let lib = core_library();
+    // "I9" looks like a current reference by name, but does not resolve to any component (e.g. it
+    // was deleted after the analysis was configured): the unit must not be guessed from the
+    // reference's first letter, and must default to V rather than A.
+    let project = CircuitBuilder::new(
+        &lib,
+        Analysis::Dc { source: "I9".into(), start: "0".into(), stop: "1".into(), step: "0.5".into() },
+    )
+    .build();
+    let mut vectors = BTreeMap::new();
+    vectors.insert("i9#sweep".to_string(), Vector::Real(vec![0.0, 0.5, 1.0]));
+    let netlist = Netlist { text: String::new(), nets: Nets::default() };
+    let result = SimResult { plot: "dc1".into(), vectors, log: vec![] };
+    let ui = to_ui_result(&project, &netlist, &result, MAX_POINTS);
+    assert_eq!(ui.x.as_ref().unwrap().unit, "V");
+}
+
+#[test]
 fn ac_result_has_log_frequency_magnitude_db_and_phase() {
     let lib = core_library();
     let mut b = CircuitBuilder::new(

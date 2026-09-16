@@ -71,7 +71,18 @@ describe("AnalysisPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     open();
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("closes with Escape even when focus stays on the summary button", () => {
+    render(<AnalysisPicker />);
+    const summary = screen.getByRole("button", { name: /Transient|Operating point|AC ·|DC sweep/ });
+    fireEvent.click(summary);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    summary.focus();
+    fireEvent.keyDown(summary, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

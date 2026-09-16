@@ -51,7 +51,13 @@ pub fn to_ui_result(project: &Project, netlist: &Netlist, result: &SimResult, ma
         Analysis::Tran { .. } => ("tran", axis(result, "time", "time", "s", false)),
         Analysis::Ac { .. } => ("ac", axis(result, "frequency", "frequency", "Hz", true)),
         Analysis::Dc { source, .. } => {
-            let unit = if source.to_ascii_uppercase().starts_with('I') { "A" } else { "V" };
+            // The unit follows the swept part, not a guess from the reference's first letter
+            // (a current source can be named e.g. "ISRC1", and nothing stops a voltage source
+            // from being named "I1").
+            let unit = match project.components.iter().find(|c| &c.reference == source) {
+                Some(c) if c.part == "sources.dc_current" => "A",
+                _ => "V",
+            };
             let values = result
                 .vectors
                 .iter()

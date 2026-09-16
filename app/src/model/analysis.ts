@@ -24,13 +24,13 @@ const short = (text: string, unit: string) => {
   return parsed.ok ? formatValue(parsed.value, unit, { trim: true }) : text;
 };
 
-export function analysisSummary(analysis: Analysis): string {
+export function analysisSummary(analysis: Analysis, project: Project): string {
   switch (analysis.type) {
     case "op": return "Operating point";
     case "tran": return `Transient · ${short(analysis.stop, "s")}`;
     case "ac": return `AC · ${short(analysis.start, "Hz")}–${short(analysis.stop, "Hz")}`;
     case "dc": {
-      const unit = analysis.source.toUpperCase().startsWith("I") ? "A" : "V";
+      const unit = dcSweepUnit(project, analysis.source);
       return `DC sweep · ${analysis.source} ${short(analysis.start, "").trim()}→${short(analysis.stop, unit)}`;
     }
   }
