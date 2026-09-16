@@ -131,11 +131,11 @@ existing symbols. Models: `components/core/models/`. Part ids follow `<group>.<n
 | TTL | 7432 quad OR (`ttl.7432`) | DIP-14 | — | XSPICE subckt `SN7432` |
 | CMOS | 4011 quad NAND (`cmos.4011`) | DIP-14 | — | XSPICE subckt `CD4011`; bridge thresholds for 5 V operation |
 | CMOS | 4017 decade counter (`cmos.4017`) | DIP-16 (Q0–Q9, CLK, INH, RST, CO, VDD, VSS) | — | XSPICE subckt `CD4017`: 5 `d_dff` Johnson counter + gate decoding |
-| Indicators | Voltmeter (`indicators.voltmeter`) | +, − | — | `R{…} + − 10Meg` (ref prefix VM → rendered as `R` element; see §4.1) |
-| Indicators | Ammeter (`indicators.ammeter`) | +, − | — | `V{…} + − DC 0` |
-| Indicators | Probe (`indicators.probe`) | 1 | — | `R{…} {pin.1} 0 1e12` |
-| Indicators | Logic probe (`indicators.logic_probe`) | 1 | — | `R{…} {pin.1} 0 1e12` |
-| Indicators | 7-segment, common cathode (`indicators.seven_segment`) | a–g, dp, K | — | subckt `SEG7_CC`: 8 LEDs to K |
+| Indicators | Voltmeter (`indicators.voltmeter`) | +, − | — | `X{ref} {pin.p} {pin.n} VMETER` (ref prefix VM); `VMETER` is 10 MΩ |
+| Indicators | Ammeter (`indicators.ammeter`) | +, − | — | `X{ref} {pin.p} {pin.n} AMMETER` (ref prefix AM); `AMMETER` is a 0 V source |
+| Indicators | Probe (`indicators.probe`) | 1 | — | `X{ref} {pin.1} PROBE` (ref prefix PR); `PROBE` is 1 TΩ to ground |
+| Indicators | Logic probe (`indicators.logic_probe`) | 1 | — | `X{ref} {pin.1} PROBE` (ref prefix LP) |
+| Indicators | 7-segment, common cathode (`indicators.seven_segment`) | a–g, dp, K | — | subckt `SEG7_CC`: 8 LEDs to K (ref prefix DS) |
 
 The table has 27 new parts: the 26 missing from spec §4.6 plus the AC current source (not in
 §4.6, added because it is the AC voltage source's pair). With the 8 existing manifests (ground,
@@ -153,10 +153,13 @@ source is recorded in a comment at the top of each `.lib` or next to the `.model
 is written from scratch as a behavioural macromodel, not copied.
 
 ### 4.1 Reference prefixes
-Reference designators come from `refPrefix`; the SPICE element letter comes from the template.
-Meters and probes use `refPrefix` values `VM`, `AM`, `PR`, `LP` and templates that start with the
-right element letter (e.g. `R{ref} …` renders `RVM1`). Parts with a `U` prefix (ICs, op-amps,
-7-segment) use `X{ref}`, like the 7400 and 555 today.
+The netlist builder requires the rendered element name (after stripping a leading `X` for
+subcircuit parts) to start with the part's `refPrefix`. A template such as `R{ref}` with prefix `VM`
+would render `RVM1` and fail that check, so every part whose reference letters differ from its
+SPICE element letter is a subcircuit instance `X{ref} …`: meters and probes (`VM`, `AM`, `PR`,
+`LP`), switches and buttons (`S`), the potentiometer (`RV`), op-amps and ICs (`U`), and the
+7-segment display (`DS`). The ammeter's current is then the ngspice vector
+`v.x<ref>.vsense#branch` (lower case).
 
 ## 5. Testing
 
