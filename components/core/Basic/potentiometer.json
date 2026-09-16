@@ -1,0 +1,14 @@
+{
+  "schema": 1, "id": "basic.potentiometer", "name": "Potentiometer", "category": "Basic",
+  "tags": ["variable", "trimmer", "RV"],
+  "symbol": { "width": 60, "height": 30, "svg": "../symbols/potentiometer.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 10 },
+                       { "id": "w", "name": "wiper", "x": 30, "y": 30 },
+                       { "id": "2", "x": 60, "y": 10 }] },
+  "params": [
+    { "key": "resistance", "label": "Resistance", "unit": "Ω", "default": "10k", "type": "si" },
+    { "key": "position", "label": "Wiper position (0-1)", "default": "0.5", "type": "si" }
+  ],
+  "spice": { "kind": "analog", "refPrefix": "RV", "subckt": "../models/pot.lib",
+             "template": "X{ref} {pin.1} {pin.w} {pin.2} POT PARAMS: R={resistance} P={position}" }
+}

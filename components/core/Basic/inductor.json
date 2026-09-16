@@ -1,0 +1,8 @@
+{
+  "schema": 1, "id": "basic.inductor", "name": "Inductor", "category": "Basic",
+  "tags": ["passive", "coil", "L"],
+  "symbol": { "width": 60, "height": 20, "svg": "../symbols/inductor.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "2", "x": 60, "y": 10 }] },
+  "params": [{ "key": "inductance", "label": "Inductance", "unit": "H", "default": "1m", "type": "si" }],
+  "spice": { "kind": "analog", "refPrefix": "L", "template": "{ref} {pin.1} {pin.2} {inductance}" }
+}

@@ -1,0 +1,6 @@
+* Potentiometer - multysm core pack (not a vendor model).
+* R is the total resistance; P is the wiper position from pin 1 (0..1).
+.subckt POT a w b params: R=10000 P=0.5
+R1 a w {max(R*min(max(P, 0), 1), 1e-3)}
+R2 w b {max(R*(1 - min(max(P, 0), 1)), 1e-3)}
+.ends POT

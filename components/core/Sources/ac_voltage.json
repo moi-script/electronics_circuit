@@ -1,0 +1,14 @@
+{
+  "schema": 1, "id": "sources.ac_voltage", "name": "AC Voltage Source", "category": "Sources",
+  "tags": ["sine", "signal", "V"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/ac_voltage.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "params": [
+    { "key": "amplitude", "label": "Amplitude", "unit": "V", "default": "1", "type": "si" },
+    { "key": "frequency", "label": "Frequency", "unit": "Hz", "default": "1k", "type": "si" },
+    { "key": "offset", "label": "Offset", "unit": "V", "default": "0", "type": "si" }
+  ],
+  "spice": { "kind": "analog", "refPrefix": "V",
+             "template": "{ref} {pin.p} {pin.n} SIN({offset} {amplitude} {frequency}) AC {amplitude}" }
+}

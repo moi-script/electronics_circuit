@@ -1,0 +1,14 @@
+{
+  "schema": 1, "id": "sources.ac_current", "name": "AC Current Source", "category": "Sources",
+  "tags": ["sine", "signal", "I"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/ac_current.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "params": [
+    { "key": "amplitude", "label": "Amplitude", "unit": "A", "default": "1m", "type": "si" },
+    { "key": "frequency", "label": "Frequency", "unit": "Hz", "default": "1k", "type": "si" },
+    { "key": "offset", "label": "Offset", "unit": "A", "default": "0", "type": "si" }
+  ],
+  "spice": { "kind": "analog", "refPrefix": "I",
+             "template": "{ref} {pin.p} {pin.n} SIN({offset} {amplitude} {frequency}) AC {amplitude}" }
+}

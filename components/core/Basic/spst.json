@@ -1,0 +1,10 @@
+{
+  "schema": 1, "id": "basic.spst", "name": "SPST Switch", "category": "Basic",
+  "tags": ["toggle", "switch"],
+  "symbol": { "width": 60, "height": 20, "svg": "../symbols/spst.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 10 }, { "id": "2", "x": 60, "y": 10 }] },
+  "params": [{ "key": "closed", "label": "State", "default": "0", "type": "choice",
+               "options": [{ "label": "Open", "value": "0" }, { "label": "Closed", "value": "1" }] }],
+  "spice": { "kind": "analog", "refPrefix": "S", "subckt": "../models/switch.lib",
+             "template": "X{ref} {pin.1} {pin.2} SW_SPST PARAMS: S={closed}" }
+}

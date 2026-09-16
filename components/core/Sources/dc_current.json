@@ -1,0 +1,9 @@
+{
+  "schema": 1, "id": "sources.dc_current", "name": "DC Current Source", "category": "Sources",
+  "tags": ["current", "constant", "I"],
+  "symbol": { "width": 40, "height": 60, "svg": "../symbols/dc_current.svg",
+              "pins": [{ "id": "p", "name": "+", "x": 20, "y": 0 },
+                       { "id": "n", "name": "-", "x": 20, "y": 60 }] },
+  "params": [{ "key": "current", "label": "Current", "unit": "A", "default": "1m", "type": "si" }],
+  "spice": { "kind": "analog", "refPrefix": "I", "template": "{ref} {pin.p} {pin.n} DC {current}" }
+}

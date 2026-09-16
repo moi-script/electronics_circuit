@@ -1,0 +1,9 @@
+* Ideal switches - multysm core pack (not vendor models).
+* S is the state from the part's choice param: 0 or 1.
+.subckt SW_SPST a b params: S=0
+R1 a b {ternary_fcn(S > 0.5, 1e-3, 1e12)}
+.ends SW_SPST
+.subckt SW_SPDT c a b params: S=0
+R1 c a {ternary_fcn(S > 0.5, 1e12, 1e-3)}
+R2 c b {ternary_fcn(S > 0.5, 1e-3, 1e12)}
+.ends SW_SPDT

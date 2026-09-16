@@ -1,0 +1,12 @@
+{
+  "schema": 1, "id": "basic.spdt", "name": "SPDT Switch", "category": "Basic",
+  "tags": ["toggle", "changeover", "switch"],
+  "symbol": { "width": 60, "height": 40, "svg": "../symbols/spdt.svg",
+              "pins": [{ "id": "c", "name": "common", "x": 0, "y": 20 },
+                       { "id": "a", "name": "A", "x": 60, "y": 10 },
+                       { "id": "b", "name": "B", "x": 60, "y": 30 }] },
+  "params": [{ "key": "pos", "label": "Position", "default": "0", "type": "choice",
+               "options": [{ "label": "A", "value": "0" }, { "label": "B", "value": "1" }] }],
+  "spice": { "kind": "analog", "refPrefix": "S", "subckt": "../models/switch.lib",
+             "template": "X{ref} {pin.c} {pin.a} {pin.b} SW_SPDT PARAMS: S={pos}" }
+}

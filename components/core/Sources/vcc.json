@@ -1,0 +1,8 @@
+{
+  "schema": 1, "id": "sources.vcc", "name": "VCC Rail", "category": "Sources",
+  "tags": ["supply", "rail", "power", "5V"],
+  "symbol": { "width": 40, "height": 30, "svg": "../symbols/vcc.svg",
+              "pins": [{ "id": "1", "name": "VCC", "x": 20, "y": 30 }] },
+  "params": [{ "key": "voltage", "label": "Voltage", "unit": "V", "default": "5", "type": "si" }],
+  "spice": { "kind": "analog", "refPrefix": "V", "template": "{ref} {pin.1} 0 DC {voltage}" }
+}

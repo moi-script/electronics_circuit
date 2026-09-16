@@ -1,0 +1,10 @@
+{
+  "schema": 1, "id": "basic.push_button", "name": "Push Button", "category": "Basic",
+  "tags": ["momentary", "button", "switch"],
+  "symbol": { "width": 60, "height": 30, "svg": "../symbols/push_button.svg",
+              "pins": [{ "id": "1", "x": 0, "y": 20 }, { "id": "2", "x": 60, "y": 20 }] },
+  "params": [{ "key": "pressed", "label": "State", "default": "0", "type": "choice",
+               "options": [{ "label": "Released", "value": "0" }, { "label": "Pressed", "value": "1" }] }],
+  "spice": { "kind": "analog", "refPrefix": "S", "subckt": "../models/switch.lib",
+             "template": "X{ref} {pin.1} {pin.2} SW_SPST PARAMS: S={pressed}" }
+}
