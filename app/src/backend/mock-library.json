@@ -1,0 +1,579 @@
+{
+  "categories": [
+    "Sources",
+    "Basic",
+    "Diodes",
+    "Transistors",
+    "Analog",
+    "TTL",
+    "CMOS",
+    "Advanced Peripherals",
+    "Misc Digital",
+    "Mixed",
+    "Indicators",
+    "Power",
+    "Misc",
+    "RF",
+    "Electromechanical"
+  ],
+  "parts": [
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "basic.capacitor",
+        "name": "Capacitor",
+        "category": "Basic",
+        "tags": [
+          "passive",
+          "C"
+        ],
+        "symbol": {
+          "width": 40,
+          "height": 20,
+          "svg": "../symbols/capacitor.svg",
+          "pins": [
+            {
+              "id": "1",
+              "name": null,
+              "x": 0,
+              "y": 10,
+              "optional": false
+            },
+            {
+              "id": "2",
+              "name": null,
+              "x": 40,
+              "y": 10,
+              "optional": false
+            }
+          ]
+        },
+        "params": [
+          {
+            "key": "capacitance",
+            "label": "Capacitance",
+            "unit": "F",
+            "default": "1u",
+            "type": "si"
+          }
+        ],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "C",
+          "template": "{ref} {pin.1} {pin.2} {capacitance}",
+          "models": [],
+          "subckt": null
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M0 10h16M24 10h16M16 0v20M24 0v20\"/></svg>\r\n",
+      "refPrefix": "C"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "basic.resistor",
+        "name": "Resistor",
+        "category": "Basic",
+        "tags": [
+          "passive",
+          "R"
+        ],
+        "symbol": {
+          "width": 60,
+          "height": 20,
+          "svg": "../symbols/resistor.svg",
+          "pins": [
+            {
+              "id": "1",
+              "name": null,
+              "x": 0,
+              "y": 10,
+              "optional": false
+            },
+            {
+              "id": "2",
+              "name": null,
+              "x": 60,
+              "y": 10,
+              "optional": false
+            }
+          ]
+        },
+        "params": [
+          {
+            "key": "resistance",
+            "label": "Resistance",
+            "unit": "Ω",
+            "default": "1k",
+            "type": "si"
+          }
+        ],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "R",
+          "template": "{ref} {pin.1} {pin.2} {resistance}",
+          "models": [],
+          "subckt": null
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 60 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M0 10h10l4-7 8 14 8-14 8 14 8-14 4 7h10\"/></svg>\r\n",
+      "refPrefix": "R"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "diodes.led",
+        "name": "LED (red)",
+        "category": "Diodes",
+        "tags": [
+          "light",
+          "indicator",
+          "D"
+        ],
+        "symbol": {
+          "width": 40,
+          "height": 20,
+          "svg": "../symbols/led.svg",
+          "pins": [
+            {
+              "id": "A",
+              "name": "Anode",
+              "x": 0,
+              "y": 10,
+              "optional": false
+            },
+            {
+              "id": "K",
+              "name": "Cathode",
+              "x": 40,
+              "y": 10,
+              "optional": false
+            }
+          ]
+        },
+        "params": [],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "D",
+          "template": "{ref} {pin.A} {pin.K} LED_RED",
+          "models": [
+            ".model LED_RED D(Is=1e-20 N=1.5 Rs=2 BV=5 IBV=10u)"
+          ],
+          "subckt": null
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M0 10h13M27 10h13M13 2v16l14-8zM27 2v16M22 1l5-4M26 3l5-4\"/></svg>\r\n",
+      "refPrefix": "D"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "mixed.555",
+        "name": "555 Timer",
+        "category": "Mixed",
+        "tags": [
+          "timer",
+          "oscillator",
+          "NE555",
+          "LM555"
+        ],
+        "symbol": {
+          "width": 80,
+          "height": 100,
+          "svg": "../symbols/timer555.svg",
+          "pins": [
+            {
+              "id": "1",
+              "name": "GND",
+              "x": 40,
+              "y": 100,
+              "optional": false
+            },
+            {
+              "id": "2",
+              "name": "TRIG",
+              "x": 0,
+              "y": 20,
+              "optional": false
+            },
+            {
+              "id": "3",
+              "name": "OUT",
+              "x": 80,
+              "y": 50,
+              "optional": false
+            },
+            {
+              "id": "4",
+              "name": "RESET",
+              "x": 20,
+              "y": 0,
+              "optional": false
+            },
+            {
+              "id": "5",
+              "name": "CTRL",
+              "x": 0,
+              "y": 60,
+              "optional": true
+            },
+            {
+              "id": "6",
+              "name": "THRES",
+              "x": 0,
+              "y": 40,
+              "optional": false
+            },
+            {
+              "id": "7",
+              "name": "DISCH",
+              "x": 0,
+              "y": 80,
+              "optional": false
+            },
+            {
+              "id": "8",
+              "name": "VCC",
+              "x": 40,
+              "y": 0,
+              "optional": false
+            }
+          ]
+        },
+        "params": [],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "U",
+          "template": "X{ref} {pin.1} {pin.2} {pin.3} {pin.4} {pin.5} {pin.6} {pin.7} {pin.8} NE555_BEH",
+          "models": [],
+          "subckt": "../models/ne555.lib"
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 100\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"10\" y=\"10\" width=\"60\" height=\"80\" rx=\"3\"/><text x=\"40\" y=\"55\" font-size=\"12\" text-anchor=\"middle\" fill=\"currentColor\" stroke=\"none\">555</text></svg>\r\n",
+      "refPrefix": "U"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "sources.dc_voltage",
+        "name": "DC Voltage Source",
+        "category": "Sources",
+        "tags": [
+          "battery",
+          "V"
+        ],
+        "symbol": {
+          "width": 40,
+          "height": 60,
+          "svg": "../symbols/dc_voltage.svg",
+          "pins": [
+            {
+              "id": "p",
+              "name": "+",
+              "x": 20,
+              "y": 0,
+              "optional": false
+            },
+            {
+              "id": "n",
+              "name": "-",
+              "x": 20,
+              "y": 60,
+              "optional": false
+            }
+          ]
+        },
+        "params": [
+          {
+            "key": "voltage",
+            "label": "Voltage",
+            "unit": "V",
+            "default": "5",
+            "type": "si"
+          }
+        ],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "V",
+          "template": "{ref} {pin.p} {pin.n} DC {voltage}",
+          "models": [],
+          "subckt": null
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 60\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M20 0v20M20 40v20M8 20h24M14 40h12\"/><path d=\"M17 12h6M20 9v6\"/></svg>\r\n",
+      "refPrefix": "V"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "sources.ground",
+        "name": "Ground",
+        "category": "Sources",
+        "tags": [
+          "gnd",
+          "0V"
+        ],
+        "symbol": {
+          "width": 20,
+          "height": 20,
+          "svg": "../symbols/ground.svg",
+          "pins": [
+            {
+              "id": "1",
+              "name": null,
+              "x": 10,
+              "y": 0,
+              "optional": false
+            }
+          ]
+        },
+        "params": [],
+        "spice": {
+          "kind": "ground"
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M10 0v8M2 8h16M5 12h10M8 16h4\"/></svg>\r\n",
+      "refPrefix": "GND"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "sources.pulse_voltage",
+        "name": "Pulse / Clock Source",
+        "category": "Sources",
+        "tags": [
+          "clock",
+          "square",
+          "V"
+        ],
+        "symbol": {
+          "width": 40,
+          "height": 60,
+          "svg": "../symbols/pulse_voltage.svg",
+          "pins": [
+            {
+              "id": "p",
+              "name": "+",
+              "x": 20,
+              "y": 0,
+              "optional": false
+            },
+            {
+              "id": "n",
+              "name": "-",
+              "x": 20,
+              "y": 60,
+              "optional": false
+            }
+          ]
+        },
+        "params": [
+          {
+            "key": "v1",
+            "label": "Low voltage",
+            "unit": "V",
+            "default": "0",
+            "type": "si"
+          },
+          {
+            "key": "v2",
+            "label": "High voltage",
+            "unit": "V",
+            "default": "5",
+            "type": "si"
+          },
+          {
+            "key": "delay",
+            "label": "Delay",
+            "unit": "s",
+            "default": "0",
+            "type": "si"
+          },
+          {
+            "key": "rise",
+            "label": "Rise time",
+            "unit": "s",
+            "default": "1n",
+            "type": "si"
+          },
+          {
+            "key": "fall",
+            "label": "Fall time",
+            "unit": "s",
+            "default": "1n",
+            "type": "si"
+          },
+          {
+            "key": "width",
+            "label": "Pulse width",
+            "unit": "s",
+            "default": "500u",
+            "type": "si"
+          },
+          {
+            "key": "period",
+            "label": "Period",
+            "unit": "s",
+            "default": "1m",
+            "type": "si"
+          }
+        ],
+        "spice": {
+          "kind": "analog",
+          "refPrefix": "V",
+          "template": "{ref} {pin.p} {pin.n} PULSE({v1} {v2} {delay} {rise} {fall} {width} {period})",
+          "models": [],
+          "subckt": null
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 60\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M20 0v15M20 45v15\"/><circle cx=\"20\" cy=\"30\" r=\"15\"/><path d=\"M11 34h5v-8h8v8h5\"/></svg>\r\n",
+      "refPrefix": "V"
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "id": "ttl.7400",
+        "name": "7400 Quad 2-input NAND",
+        "category": "TTL",
+        "tags": [
+          "nand",
+          "gate",
+          "logic",
+          "74"
+        ],
+        "symbol": {
+          "width": 80,
+          "height": 160,
+          "svg": "../symbols/dip14.svg",
+          "pins": [
+            {
+              "id": "1",
+              "name": "1A",
+              "x": 0,
+              "y": 10,
+              "optional": true
+            },
+            {
+              "id": "2",
+              "name": "1B",
+              "x": 0,
+              "y": 20,
+              "optional": true
+            },
+            {
+              "id": "3",
+              "name": "1Y",
+              "x": 80,
+              "y": 15,
+              "optional": true
+            },
+            {
+              "id": "4",
+              "name": "2A",
+              "x": 0,
+              "y": 40,
+              "optional": true
+            },
+            {
+              "id": "5",
+              "name": "2B",
+              "x": 0,
+              "y": 50,
+              "optional": true
+            },
+            {
+              "id": "6",
+              "name": "2Y",
+              "x": 80,
+              "y": 45,
+              "optional": true
+            },
+            {
+              "id": "7",
+              "name": "GND",
+              "x": 40,
+              "y": 160,
+              "optional": false
+            },
+            {
+              "id": "8",
+              "name": "3Y",
+              "x": 80,
+              "y": 95,
+              "optional": true
+            },
+            {
+              "id": "9",
+              "name": "3A",
+              "x": 0,
+              "y": 90,
+              "optional": true
+            },
+            {
+              "id": "10",
+              "name": "3B",
+              "x": 0,
+              "y": 100,
+              "optional": true
+            },
+            {
+              "id": "11",
+              "name": "4Y",
+              "x": 80,
+              "y": 125,
+              "optional": true
+            },
+            {
+              "id": "12",
+              "name": "4A",
+              "x": 0,
+              "y": 120,
+              "optional": true
+            },
+            {
+              "id": "13",
+              "name": "4B",
+              "x": 0,
+              "y": 130,
+              "optional": true
+            },
+            {
+              "id": "14",
+              "name": "VCC",
+              "x": 40,
+              "y": 0,
+              "optional": false
+            }
+          ]
+        },
+        "params": [],
+        "spice": {
+          "kind": "digital",
+          "refPrefix": "U",
+          "template": "X{ref} {pin.1} {pin.2} {pin.3} {pin.4} {pin.5} {pin.6} {pin.7} {pin.8} {pin.9} {pin.10} {pin.11} {pin.12} {pin.13} {pin.14} SN7400",
+          "models": [],
+          "subckt": "../models/sn7400.lib"
+        },
+        "live": null,
+        "controls": []
+      },
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 160\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"10\" y=\"5\" width=\"60\" height=\"150\" rx=\"3\"/><path d=\"M34 5a6 6 0 0 0 12 0\"/></svg>\r\n",
+      "refPrefix": "U"
+    }
+  ],
+  "issues": []
+}
