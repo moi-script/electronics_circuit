@@ -278,6 +278,37 @@ fn rotation_that_is_not_a_right_angle_is_an_error() {
 }
 
 #[test]
+fn every_core_part_renders_a_netlist_line() {
+    let lib = core_library();
+    for (id, part) in &lib.parts {
+        let Some(device) = part.manifest.spice.device() else { continue };
+        let reference = format!("{}1", device.ref_prefix);
+        let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+        let gnd = b.add("sources.ground", "GND1", &[]);
+        let pins: Vec<String> = part.manifest.symbol.pins.iter().map(|p| p.id.clone()).collect();
+        let mut loads = Vec::new();
+        for i in 0..pins.len() {
+            loads.push(b.add("basic.resistor", &format!("RL{i}"), &[]));
+        }
+        let dut = b.add(id, &reference, &[]);
+        for (pin, load) in pins.iter().zip(&loads) {
+            b.connect((&dut, pin.as_str()), (load, "1"));
+            b.connect((load, "2"), (&gnd, "1"));
+        }
+        let netlist = build_netlist(&b.build(), &lib).unwrap_or_else(|e| panic!("{id}: {e:#?}"));
+        let upper = reference.to_uppercase();
+        assert!(
+            netlist.text.lines().any(|l| {
+                let first = l.split_whitespace().next().unwrap_or("").to_uppercase();
+                first == upper || first == format!("X{upper}")
+            }),
+            "{id} has no element line:\n{}",
+            netlist.text
+        );
+    }
+}
+
+#[test]
 fn choice_params_render_their_value_and_reject_other_values() {
     let tmp = tempfile::tempdir().unwrap();
     let put = |rel: &str, text: &str| std::fs::write(tmp.path().join(rel), text).unwrap();

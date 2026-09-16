@@ -28,7 +28,7 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(editorStore.getState().tool).toEqual({ kind: "place", partId: "ttl.7400" });
+    expect(editorStore.getState().tool).toEqual({ kind: "place", partId: "diodes.1n4148" });
   });
 
   it("closes on Escape", () => {

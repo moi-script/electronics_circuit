@@ -8,7 +8,7 @@ describe("mock backend", () => {
   it("serves the exported core library", async () => {
     const library = await createMockBackend().loadLibrary();
     expect(library.categories).toHaveLength(15);
-    expect(library.parts).toHaveLength(8);
+    expect(library.parts).toHaveLength(35);
     const resistor = library.parts.find((p) => p.manifest.id === "basic.resistor")!;
     expect(resistor.refPrefix).toBe("R");
     expect(resistor.svg).toContain("<svg");

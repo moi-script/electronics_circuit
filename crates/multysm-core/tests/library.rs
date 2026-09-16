@@ -102,18 +102,19 @@ mod common;
 #[test]
 fn core_library_loads_cleanly() {
     let lib = common::core_library();
-    for id in [
-        "sources.ground",
-        "sources.dc_voltage",
-        "sources.pulse_voltage",
-        "basic.resistor",
-        "basic.capacitor",
-        "diodes.led",
-        "ttl.7400",
-        "mixed.555",
-    ] {
-        assert!(lib.get(id).is_some(), "missing {id}");
+    assert_eq!(lib.parts.len(), 35, "{:?}", lib.parts.keys().collect::<Vec<_>>());
+    let mut per_group: std::collections::BTreeMap<String, usize> = Default::default();
+    for part in lib.parts.values() {
+        *per_group.entry(format!("{:?}", part.manifest.category)).or_default() += 1;
     }
+    let expected: std::collections::BTreeMap<String, usize> = [
+        ("Sources", 7), ("Basic", 7), ("Diodes", 4), ("Transistors", 3), ("Analog", 2),
+        ("Ttl", 4), ("Cmos", 2), ("Mixed", 1), ("Indicators", 5),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v))
+    .collect();
+    assert_eq!(per_group, expected);
 }
 
 const DIODE: &str = r#"{
