@@ -12,6 +12,7 @@ import PlotDock from "./plot/PlotDock";
 import PropertiesPanel from "./PropertiesPanel";
 import RecoveryBanner from "./RecoveryBanner";
 import { createRunActions } from "./runActions";
+import SimErrorBar from "./SimErrorBar";
 import StatusBar from "./StatusBar";
 import TopBar from "./TopBar";
 import { useAutosave } from "./useAutosave";
@@ -86,6 +87,7 @@ export default function AppShell() {
       <div className="flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
           <Canvas />
+          <SimErrorBar />
           {focus && <FocusToolbar onOpenComponents={openComponents} run={runActions} />}
           <RecoveryBanner backend={backend} />
           {notice && (

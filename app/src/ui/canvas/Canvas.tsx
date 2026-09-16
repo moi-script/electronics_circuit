@@ -3,12 +3,15 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Circle, Layer, Line, Stage } from "react-konva";
-import { snapPoint } from "@/model/geometry";
+import { pinPosition, snapPoint } from "@/model/geometry";
+import { canvasLabels, simFeedback } from "@/model/results";
 import { editorStore, useEditor } from "@/model/store";
 import type { Point } from "@/model/types";
 import { isConnectionPoint, wireClick, wirePreview } from "@/model/wireTool";
 import { partMap, snapTarget } from "@/model/wiring";
 import { tokens } from "@/theme/tokens";
+import ErrorOverlay from "./ErrorOverlay";
+import OpLabels from "./OpLabels";
 import PartNode from "./PartNode";
 import { isSpaceHeld, useSpaceHeld } from "./spaceHeld";
 import WireLayer from "./WireLayer";
@@ -44,7 +47,18 @@ export default function Canvas() {
   const library = useEditor((s) => s.library);
   const tool = useEditor((s) => s.tool);
   const selection = useEditor((s) => s.selection);
+  const sim = useEditor((s) => s.sim);
   const parts = useMemo(() => partMap(library), [library]);
+  const feedback = useMemo(() => simFeedback(sim, project), [sim, project]);
+  const labels = useMemo(
+    () => (feedback.showLabels && sim.outcome?.status === "ok" ? canvasLabels(sim.outcome.result, project, parts) : []),
+    [feedback, sim, project, parts],
+  );
+  const errorPins = useMemo(() => feedback.pinErrors.flatMap(({ uid, pin }) => {
+    const inst = project.components.find((c) => c.uid === uid);
+    const def = inst && parts.get(inst.part)?.manifest.symbol.pins.find((p) => p.id === pin);
+    return inst && def ? [pinPosition(inst, def)] : [];
+  }), [feedback, project, parts]);
   const zoom = project.view?.zoom ?? 1;
   const pan: Point = project.view?.pan ?? [0, 0];
   const [pointer, setPointer] = useState<Point | null>(null);
@@ -126,6 +140,8 @@ export default function Canvas() {
     <div
       ref={container}
       data-testid="canvas"
+      data-error-parts={feedback.partMessages.size}
+      data-op-labels={labels.length}
       className="h-full w-full overflow-hidden"
       style={{ ...gridStyle(zoom, pan), cursor: tool.kind === "select" ? "default" : "crosshair" }}
       onContextMenu={(e) => e.preventDefault()}
@@ -158,9 +174,12 @@ export default function Canvas() {
                   part={part}
                   selected={selection?.kind === "component" && selection.uid === inst.uid}
                   interactive={tool.kind === "select"}
+                  errors={feedback.partMessages.get(inst.uid)}
                 />
               ) : null;
             })}
+            <OpLabels labels={labels} zoom={zoom} />
+            <ErrorOverlay points={errorPins} />
             {placing && ghostAt && (
               <PartNode
                 inst={{ uid: "ghost", part: placing.manifest.id, ref: "", x: ghostAt[0], y: ghostAt[1], rot: 0, mirror: false, params: {} }}
