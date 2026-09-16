@@ -24,6 +24,12 @@ describe("engineMessage", () => {
     expect(engineMessage(["no convergence in dc"])).toBe("The simulation didn't converge. Check source values and connections.");
     expect(engineMessage(["something else"])).toBe("The simulator reported an error.");
   });
+
+  it("appends the outcome message to the generic fallback when the log doesn't match a known pattern", () => {
+    expect(engineMessage([], "could not load ngspice from X")).toBe("The simulator reported an error. could not load ngspice from X");
+    expect(engineMessage([])).toBe("The simulator reported an error.");
+    expect(engineMessage(["timestep too small"], "could not load ngspice from X")).toBe("The simulation didn't converge. Try a smaller max step.");
+  });
 });
 
 describe("partsNamedInLog", () => {
@@ -95,6 +101,16 @@ describe("simFeedback", () => {
     expect(engine.problemUids).toEqual(["c3"]);
     const timeout = simFeedback({ ...idleSim(), status: "failed", outcome: { status: "timeout", seconds: 30 } }, project);
     expect(timeout.bar?.message).toBe("Stopped after 30 s. Try a shorter stop time or a larger max step.");
+  });
+
+  it("surfaces outcome.message when the log has no known pattern (or is empty)", () => {
+    const project = dividerProject();
+    const engine = simFeedback(
+      { ...idleSim(), status: "failed", outcome: { status: "engine", message: "could not load ngspice from X", log: [] } },
+      project,
+    );
+    expect(engine.bar?.message).toContain("could not load ngspice from X");
+    expect(engine.bar?.log).toContain("could not load ngspice from X");
   });
 
   it("shows nothing when stale and labels only for fresh op results", () => {

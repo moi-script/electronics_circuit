@@ -10,9 +10,13 @@ const ENGINE_MESSAGES: [RegExp, string][] = [
   [/no convergence|gmin/i, "The simulation didn't converge. Check source values and connections."],
 ];
 
-export function engineMessage(log: string[]): string {
+const GENERIC_ENGINE_MESSAGE = "The simulator reported an error.";
+
+export function engineMessage(log: string[], fallback?: string): string {
   const text = log.join("\n");
-  return ENGINE_MESSAGES.find(([pattern]) => pattern.test(text))?.[1] ?? "The simulator reported an error.";
+  const known = ENGINE_MESSAGES.find(([pattern]) => pattern.test(text))?.[1];
+  if (known) return known;
+  return fallback ? `${GENERIC_ENGINE_MESSAGE} ${fallback}` : GENERIC_ENGINE_MESSAGE;
 }
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -131,11 +135,13 @@ export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
     }
     case "engine": {
       const uids = partsNamedInLog(outcome.log, project);
-      const message = engineMessage(outcome.log);
+      const isKnown = ENGINE_MESSAGES.some(([pattern]) => pattern.test(outcome.log.join("\n")));
+      const message = engineMessage(outcome.log, outcome.message);
+      const log = isKnown || !outcome.message ? outcome.log : [outcome.message, ...outcome.log];
       return {
         ...empty(),
         partMessages: new Map(uids.map((uid) => [uid, [message]])),
-        bar: { message, log: outcome.log },
+        bar: { message, log },
         problemUids: uids,
       };
     }
