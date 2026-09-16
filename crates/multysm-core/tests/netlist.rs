@@ -266,3 +266,13 @@ fn library_and_netlist_errors_serialize() {
     assert_eq!(json["errors"][0]["code"], "no_ground");
     assert!(json["message"].is_string());
 }
+
+#[test]
+fn rotation_that_is_not_a_right_angle_is_an_error() {
+    let lib = core_library();
+    let mut project = divider(&lib, Analysis::Op).build();
+    project.components[2].rot = 45;
+    let errors = build_netlist(&project, &lib).unwrap_err();
+    assert!(errors.iter().any(|e| e.code == ErrorCode::InvalidRotation
+        && e.component_uid.as_deref() == Some(project.components[2].uid.as_str())));
+}

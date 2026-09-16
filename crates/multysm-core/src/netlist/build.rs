@@ -35,6 +35,16 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
 
     check_references(project, library, &mut errors);
 
+    for inst in &project.components {
+        if !matches!(inst.rot, 0 | 90 | 180 | 270) {
+            errors.push(NetlistError::new(
+                ErrorCode::InvalidRotation,
+                format!("{}: rotation {}° is not 0, 90, 180 or 270", inst.reference, inst.rot),
+                Some(inst.uid.as_str()),
+            ));
+        }
+    }
+
     let mut tie_lines = Vec::new();
     for (net, pins) in &nets.net_pins {
         if net == GROUND || pins.len() != 1 {

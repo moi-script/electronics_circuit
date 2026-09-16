@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "multysm project (.msym)",
+  "type": "object",
+  "required": ["format", "app", "components", "wires", "analysis"],
+  "properties": {
+    "format": { "const": 1 },
+    "app": { "type": "string" },
+    "packs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": { "id": { "type": "string" }, "version": { "type": "string" } }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["uid", "part", "ref", "x", "y"],
+        "additionalProperties": false,
+        "properties": {
+          "uid": { "type": "string", "minLength": 1 },
+          "part": { "type": "string", "minLength": 1 },
+          "ref": { "type": "string" },
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "rot": { "enum": [0, 90, 180, 270] },
+          "mirror": { "type": "boolean" },
+          "params": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
+    "wires": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["uid", "points"],
+        "additionalProperties": false,
+        "properties": {
+          "uid": { "type": "string", "minLength": 1 },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } }
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["type"],
+      "properties": { "type": { "enum": ["op", "tran", "ac", "dc"] } }
+    },
+    "probes": { "type": "array", "items": { "type": "string" } },
+    "view": { "type": ["object", "null"] }
+  }
+}

@@ -4,6 +4,7 @@ pub mod circuit;
 pub mod engine;
 pub mod library;
 pub mod netlist;
+pub mod project_file;
 pub mod si;
 
 use circuit::Project;

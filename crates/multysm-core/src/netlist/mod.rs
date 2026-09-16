@@ -23,6 +23,7 @@ pub enum ErrorCode {
     InvalidReference,
     DuplicateReference,
     RefPrefixMismatch,
+    InvalidRotation,
 }
 
 /// A problem found before simulation, tied to a component when possible so
