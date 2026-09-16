@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { editorStore, type EditorStore } from "@/model/store";
 
 export interface ShortcutActions {
-  openPalette(): void;
+  openComponents(): void;
   newFile?(): void;
   open?(): void;
   save?(): void;
@@ -36,7 +36,7 @@ export function handleShortcut(e: KeyInput, store: EditorStore, actions: Shortcu
 
   if (e.ctrlKey || e.metaKey) {
     switch (key) {
-      case "k": actions.openPalette(); return true;
+      case "k": actions.openComponents(); return true;
       case "z": if (e.shiftKey) s.redo(); else s.undo(); return true;
       case "y": s.redo(); return true;
       case "c": s.copySelected(); return true;
@@ -69,7 +69,7 @@ export function handleShortcut(e: KeyInput, store: EditorStore, actions: Shortcu
   }
 
   switch (key) {
-    case "p": actions.openPalette(); return true;
+    case "p": actions.openComponents(); return true;
     case "w": s.setTool({ kind: "wire", points: [] }); return true;
     case "r": s.rotateSelected(); return true;
     case "m": s.mirrorSelected(); return true;

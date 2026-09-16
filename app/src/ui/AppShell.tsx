@@ -5,10 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage, type Backend } from "@/backend/backend";
 import { getBackend } from "@/backend/index";
 import { editorStore, useEditor } from "@/model/store";
-import CommandPalette from "./CommandPalette";
+import ComponentBrowser from "./ComponentBrowser";
 import { createFileActions } from "./fileActions";
 import FocusToolbar from "./FocusToolbar";
-import PartsPanel from "./PartsPanel";
 import PlotDock from "./PlotDock";
 import PropertiesPanel from "./PropertiesPanel";
 import RecoveryBanner from "./RecoveryBanner";
@@ -25,7 +24,7 @@ export default function AppShell() {
   const selection = useEditor((s) => s.selection);
   const [backend, setBackend] = useState<Backend | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
   const notify = useCallback((message: string) => setNotice(message), []);
 
   useEffect(() => {
@@ -64,9 +63,9 @@ export default function AppShell() {
     [backend, notify],
   );
 
-  const openPalette = () => setPaletteOpen(true);
+  const openComponents = () => setBrowserOpen(true);
   useShortcuts({
-    openPalette,
+    openComponents,
     newFile: files ? () => void files.newFile() : undefined,
     open: files ? () => void files.open() : undefined,
     save: files ? () => void files.save() : undefined,
@@ -79,12 +78,11 @@ export default function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      {!focus && <TopBar onOpenPalette={openPalette} files={files} />}
+      {!focus && <TopBar onOpenComponents={openComponents} files={files} />}
       <div className="flex min-h-0 flex-1">
-        {!focus && <PartsPanel />}
         <main className="relative min-w-0 flex-1">
           <Canvas />
-          {focus && <FocusToolbar onOpenPalette={openPalette} />}
+          {focus && <FocusToolbar onOpenComponents={openComponents} />}
           <RecoveryBanner backend={backend} />
           {notice && (
             <div role="alert" className="absolute bottom-3 left-3 rounded border border-error bg-panel px-3 py-2 text-error">
@@ -96,7 +94,7 @@ export default function AppShell() {
       </div>
       {!focus && panels.plot && <PlotDock />}
       {!focus && <StatusBar />}
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ComponentBrowser open={browserOpen} onClose={() => setBrowserOpen(false)} />
     </div>
   );
 }

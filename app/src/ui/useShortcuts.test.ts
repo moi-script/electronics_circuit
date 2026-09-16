@@ -15,7 +15,7 @@ const press = (key: string, opts: { ctrl?: boolean; shift?: boolean; target?: Ev
 
 beforeEach(() => {
   store = createEditorStore({ library: testLibrary });
-  actions = { openPalette: vi.fn() };
+  actions = { openComponents: vi.fn() };
   s().placePart("basic.resistor", [0, 0]);
 });
 
@@ -48,10 +48,10 @@ describe("handleShortcut", () => {
     expect(s().selection).toBeNull();
   });
 
-  it("opens the palette with Ctrl+K and P", () => {
+  it("opens the component browser with Ctrl+K and P", () => {
     press("k", { ctrl: true });
     press("p");
-    expect(actions.openPalette).toHaveBeenCalledTimes(2);
+    expect(actions.openComponents).toHaveBeenCalledTimes(2);
   });
 
   it("toggles the plot dock and focus mode", () => {
