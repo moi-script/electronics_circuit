@@ -5,3 +5,6 @@ out/
 target/
 vendor/
 Cargo.lock.bak
+src-tauri/gen/
+app/test-results/
+app/playwright-report/
