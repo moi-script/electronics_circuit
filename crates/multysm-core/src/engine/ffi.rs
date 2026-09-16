@@ -42,6 +42,7 @@ type CommandFn = unsafe extern "C" fn(*const c_char) -> c_int;
 type CurPlotFn = unsafe extern "C" fn() -> *mut c_char;
 type AllVecsFn = unsafe extern "C" fn(*mut c_char) -> *mut *mut c_char;
 type VecInfoFn = unsafe extern "C" fn(*mut c_char) -> *mut VectorInfo;
+type RunningFn = unsafe extern "C" fn() -> bool;
 
 pub struct NgspiceApi {
     pub init: InitFn,
@@ -50,6 +51,7 @@ pub struct NgspiceApi {
     pub cur_plot: CurPlotFn,
     pub all_vecs: AllVecsFn,
     pub vec_info: VecInfoFn,
+    pub running: RunningFn,
 }
 
 impl NgspiceApi {
@@ -67,6 +69,7 @@ impl NgspiceApi {
             cur_plot: *lib.get::<CurPlotFn>(b"ngSpice_CurPlot\0")?,
             all_vecs: *lib.get::<AllVecsFn>(b"ngSpice_AllVecs\0")?,
             vec_info: *lib.get::<VecInfoFn>(b"ngGet_Vec_Info\0")?,
+            running: *lib.get::<RunningFn>(b"ngSpice_running\0")?,
         })
     }
 }

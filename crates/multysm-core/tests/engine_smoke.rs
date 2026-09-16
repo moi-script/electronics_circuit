@@ -1,6 +1,10 @@
 mod common;
 
+use multysm_core::engine::run_netlist_with;
 use multysm_core::engine::{run_netlist, EngineError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 #[test]
 fn divider_operating_point() {
@@ -74,4 +78,53 @@ fn results_and_errors_serialize_to_json() {
     let json = serde_json::to_value(multysm_core::SimulateError::Engine(EngineError::ConfigMismatch)).unwrap();
     assert_eq!(json["kind"], "config_mismatch");
     assert!(json.get("log").is_none());
+}
+
+const LONG_RC: &str =
+    "* long\nV1 in 0 PULSE(0 5 0 1u 1u 1m 2m)\nR1 in out 1k\nC1 out 0 1u\n.tran 1u 100\n.end\n";
+
+#[test]
+fn cancel_stops_a_long_run_and_the_engine_is_reusable() {
+    let config = common::engine_config();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let flag = cancel.clone();
+    let setter = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(300));
+        flag.store(true, Ordering::SeqCst);
+    });
+    let started = Instant::now();
+    let outcome = run_netlist_with(&config, LONG_RC, &cancel, None);
+    setter.join().unwrap();
+    assert!(matches!(outcome, Err(EngineError::Stopped)), "{outcome:?}");
+    assert!(started.elapsed() < Duration::from_secs(4), "stop took {:?}", started.elapsed());
+
+    let after = run_netlist(&config, "* a\nV1 x 0 DC 1\nR1 x 0 1k\n.op\n.end\n").unwrap();
+    assert!(after.real("x").is_some());
+}
+
+#[test]
+fn timeout_stops_a_long_run() {
+    let config = common::engine_config();
+    let started = Instant::now();
+    let outcome = run_netlist_with(&config, LONG_RC, &AtomicBool::new(false), Some(Duration::from_secs(1)));
+    assert!(matches!(outcome, Err(EngineError::Timeout { seconds: 1 })), "{outcome:?}");
+    assert!(started.elapsed() < Duration::from_secs(5), "timeout took {:?}", started.elapsed());
+
+    let after = run_netlist(&config, "* b\nV1 y 0 DC 2\nR1 y 0 1k\n.op\n.end\n").unwrap();
+    assert!(after.real("y").is_some());
+}
+
+#[test]
+fn stopped_and_timeout_errors_have_kinds() {
+    assert_eq!(EngineError::Stopped.kind(), "stopped");
+    assert_eq!(EngineError::Timeout { seconds: 30 }.kind(), "timeout");
+}
+
+#[test]
+fn quick_runs_finish_without_waiting_for_the_poll_limits() {
+    let config = common::engine_config();
+    run_netlist(&config, "* warm\nV1 x 0 DC 1\nR1 x 0 1k\n.op\n.end\n").unwrap();
+    let started = Instant::now();
+    run_netlist(&config, "* quick\nV1 x 0 DC 1\nR1 x 0 1k\n.op\n.end\n").unwrap();
+    assert!(started.elapsed() < Duration::from_millis(800), "op took {:?}", started.elapsed());
 }
