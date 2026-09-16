@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { editorStore, useEditor } from "@/model/store";
 import { CATEGORIES, type Category, type Param, type PartDef } from "@/model/types";
 import { filterParts } from "./partSearch";
@@ -35,7 +35,9 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
   );
   const active = listed.find((p) => p.manifest.id === activeId) ?? listed[0];
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the reset happens before the browser paints, otherwise
+  // the previous query/results can flash for a frame on reopen.
+  useLayoutEffect(() => {
     if (!open) return;
     const memory = editorStore.getState().browser;
     setQuery("");
@@ -46,7 +48,7 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
   if (!open) return null;
 
   const close = () => {
-    rememberBrowser({ category: current, partId: active?.manifest.id ?? null });
+    rememberBrowser({ category: active?.manifest.category ?? current, partId: active?.manifest.id ?? null });
     onClose();
   };
 
@@ -68,6 +70,7 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/60 p-4" onMouseDown={close}>
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Add component"
         className="flex h-[560px] max-h-full w-[880px] max-w-full flex-col overflow-hidden rounded-lg border border-line bg-panel"
         onMouseDown={(e) => e.stopPropagation()}
@@ -103,6 +106,7 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
                     aria-label={`group ${c}`}
                     aria-pressed={selected}
                     disabled={count === 0}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setCategory(c); setQuery(""); setActiveId(null); }}
                     className={`flex w-full items-center justify-between gap-2 px-3 py-1 text-left ${
                       count === 0 ? "cursor-default text-muted/60" : selected ? "bg-line text-text" : "text-muted hover:text-text"
@@ -123,6 +127,7 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
                     key={part.manifest.id}
                     role="option"
                     aria-selected={selected}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setActiveId(part.manifest.id)}
                     onDoubleClick={() => choose(part)}
                     className={`flex cursor-pointer items-center gap-2 px-3 py-1 ${selected ? "bg-line text-text" : "text-muted hover:text-text"}`}

@@ -9,6 +9,8 @@ export interface ShortcutActions {
   open?(): void;
   save?(): void;
   saveAs?(): void;
+  /** When true, no shortcut is handled (e.g. the component browser modal owns the keyboard). */
+  isBlocked?(): boolean;
 }
 
 export interface KeyInput {
@@ -31,6 +33,7 @@ const run = (action?: () => void) => {
 /** Applies a keyboard shortcut. Returns true when handled (the caller prevents the default). */
 export function handleShortcut(e: KeyInput, store: EditorStore, actions: ShortcutActions): boolean {
   if (isTyping(e.target)) return false;
+  if (actions.isBlocked?.()) return false;
   const s = store.getState();
   const key = e.key.toLowerCase();
 

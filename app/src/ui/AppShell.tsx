@@ -70,6 +70,7 @@ export default function AppShell() {
     open: files ? () => void files.open() : undefined,
     save: files ? () => void files.save() : undefined,
     saveAs: files ? () => void files.saveAs() : undefined,
+    isBlocked: () => browserOpen,
   });
   useAutosave(backend, notify);
 

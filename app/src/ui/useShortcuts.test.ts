@@ -79,4 +79,15 @@ describe("handleShortcut", () => {
     expect(press("r", { target: input })).toBe(false);
     expect(s().project.components[0].rot).toBe(0);
   });
+
+  it("ignores every shortcut while the component browser is open", () => {
+    actions.isBlocked = () => true;
+    expect(press("Delete")).toBe(false);
+    expect(s().project.components).toHaveLength(1);
+    expect(press("r")).toBe(false);
+    expect(s().project.components[0].rot).toBe(0);
+    expect(press("k", { ctrl: true })).toBe(false);
+    expect(press("z", { ctrl: true })).toBe(false);
+    expect(press("Escape")).toBe(false);
+  });
 });

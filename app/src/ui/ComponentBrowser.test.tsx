@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { editorStore } from "@/model/store";
 import { resetEditor } from "@/test/resetEditor";
@@ -107,6 +108,27 @@ describe("ComponentBrowser", () => {
     expect(state().tool).toEqual({ kind: "select" });
   });
 
+  it("keeps keyboard focus in the dialog after a mouse click, so Enter still places", async () => {
+    const user = userEvent.setup();
+    render(<ComponentBrowser open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "group Basic" }));
+    // A real click moves focus off the input unless the row's mousedown default is prevented.
+    await user.click(screen.getByRole("option", { name: "Inductor" }));
+    expect(document.activeElement).toBe(search());
+    await user.keyboard("{Enter}");
+    expect(state().tool).toEqual({ kind: "place", partId: "basic.inductor" });
+  });
+
+  it("keeps keyboard focus in the dialog after clicking a group, so Escape still closes", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<ComponentBrowser open onClose={onClose} />);
+    await user.click(screen.getByRole("button", { name: "group Diodes" }));
+    expect(document.activeElement).toBe(search());
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("reopens on the last group and part", () => {
     const { rerender } = render(<ComponentBrowser open onClose={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "group Diodes" }));
@@ -117,5 +139,18 @@ describe("ComponentBrowser", () => {
     rerender(<ComponentBrowser open onClose={() => {}} />);
     expect(screen.getByRole("button", { name: "group Diodes" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("option", { name: "LED (red)" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("remembers a search hit's own group, not the previously browsed group", () => {
+    const { rerender } = render(<ComponentBrowser open onClose={() => {}} />);
+    // Start on "Sources" (the default group), then search for a part that lives elsewhere.
+    fireEvent.change(search(), { target: { value: "2n2222" } });
+    fireEvent.click(screen.getByRole("option", { name: /2N2222/ }));
+    fireEvent.keyDown(search(), { key: "Escape" });
+    expect(state().browser).toEqual({ category: "Transistors", partId: "transistors.2n2222" });
+    rerender(<ComponentBrowser open={false} onClose={() => {}} />);
+    rerender(<ComponentBrowser open onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: "group Transistors" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("option", { name: /2N2222/ })).toHaveAttribute("aria-selected", "true");
   });
 });
