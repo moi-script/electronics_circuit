@@ -11,6 +11,7 @@ import FocusToolbar from "./FocusToolbar";
 import PlotDock from "./PlotDock";
 import PropertiesPanel from "./PropertiesPanel";
 import RecoveryBanner from "./RecoveryBanner";
+import { createRunActions } from "./runActions";
 import StatusBar from "./StatusBar";
 import TopBar from "./TopBar";
 import { useAutosave } from "./useAutosave";
@@ -62,6 +63,7 @@ export default function AppShell() {
     }),
     [backend, notify],
   );
+  const runActions = useMemo(() => backend && createRunActions(editorStore, backend), [backend]);
 
   const openComponents = () => setBrowserOpen(true);
   useShortcuts({
@@ -70,6 +72,7 @@ export default function AppShell() {
     open: files ? () => void files.open() : undefined,
     save: files ? () => void files.save() : undefined,
     saveAs: files ? () => void files.saveAs() : undefined,
+    toggleRun: runActions ? runActions.toggle : undefined,
     isBlocked: () => browserOpen,
   });
   useAutosave(backend, notify);
@@ -79,11 +82,11 @@ export default function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      {!focus && <TopBar onOpenComponents={openComponents} files={files} />}
+      {!focus && <TopBar onOpenComponents={openComponents} files={files} run={runActions} />}
       <div className="flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
           <Canvas />
-          {focus && <FocusToolbar onOpenComponents={openComponents} />}
+          {focus && <FocusToolbar onOpenComponents={openComponents} run={runActions} />}
           <RecoveryBanner backend={backend} />
           {notice && (
             <div role="alert" className="absolute bottom-3 left-3 rounded border border-error bg-panel px-3 py-2 text-error">

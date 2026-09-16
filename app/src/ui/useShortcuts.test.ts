@@ -15,7 +15,7 @@ const press = (key: string, opts: { ctrl?: boolean; shift?: boolean; target?: Ev
 
 beforeEach(() => {
   store = createEditorStore({ library: testLibrary });
-  actions = { openComponents: vi.fn() };
+  actions = { openComponents: vi.fn(), toggleRun: vi.fn() };
   s().placePart("basic.resistor", [0, 0]);
 });
 
@@ -62,6 +62,11 @@ describe("handleShortcut", () => {
 
   it("has no Ctrl+B shortcut", () => {
     expect(press("b", { ctrl: true })).toBe(false);
+  });
+
+  it("toggles the simulation with Ctrl+Enter", () => {
+    expect(press("Enter", { ctrl: true })).toBe(true);
+    expect(actions.toggleRun).toHaveBeenCalledTimes(1);
   });
 
   it("uses file actions only when provided", () => {

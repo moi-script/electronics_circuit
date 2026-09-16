@@ -3,10 +3,12 @@
 import { useEditor } from "@/model/store";
 import AnalysisPicker from "./AnalysisPicker";
 import type { FileActions } from "./fileActions";
+import RunButton from "./RunButton";
+import type { RunActions } from "./runActions";
 
 const barButton = "rounded px-2 py-1 text-muted hover:bg-line hover:text-text disabled:opacity-40";
 
-export default function TopBar({ onOpenComponents, files }: { onOpenComponents(): void; files: FileActions | null }) {
+export default function TopBar({ onOpenComponents, files, run }: { onOpenComponents(): void; files: FileActions | null; run: RunActions | null }) {
   const { tool, setTool, undo, redo, past, future, filePath, dirty } = useEditor((s) => s);
   const name = filePath ? filePath.split(/[\\/]/).pop() : "Untitled";
   return (
@@ -28,7 +30,7 @@ export default function TopBar({ onOpenComponents, files }: { onOpenComponents()
       <span className="flex-1 truncate text-center text-muted">{name}{dirty ? " •" : ""}</span>
       <AnalysisPicker />
       <span className="mx-2 h-5 w-px bg-line" />
-      <button className="rounded bg-accent px-3 py-1 font-semibold text-bg opacity-40" disabled title="Simulation arrives in Plan 3">▶ Run</button>
+      <RunButton actions={run} />
     </header>
   );
 }

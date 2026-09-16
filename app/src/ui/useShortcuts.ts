@@ -9,6 +9,7 @@ export interface ShortcutActions {
   open?(): void;
   save?(): void;
   saveAs?(): void;
+  toggleRun?(): void;
   /** When true, no shortcut is handled (e.g. the component browser modal owns the keyboard). */
   isBlocked?(): boolean;
 }
@@ -49,6 +50,7 @@ export function handleShortcut(e: KeyInput, store: EditorStore, actions: Shortcu
       case "n": return run(actions.newFile);
       case "o": return run(actions.open);
       case "s": return e.shiftKey ? run(actions.saveAs) : run(actions.save);
+      case "enter": return run(actions.toggleRun);
       default: return false;
     }
   }
