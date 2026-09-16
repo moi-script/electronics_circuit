@@ -1,0 +1,12 @@
+* LM741 behavioural macromodel - written for multysm core pack (not a vendor model).
+* DC gain 2e5, dominant pole about 5 Hz (GBW about 1 MHz), 2 Mohm input,
+* 75 ohm output, output swing limited to 1.5 V inside each rail.
+.subckt LM741 inp inn out vpos vneg
+Rin inp inn 2Meg
+Bgm 0 n1 I = 1e-3*max(min(V(inp)-V(inn), 1e-4), -1e-4)
+R1 n1 0 200Meg
+C1 n1 0 159p
+Bout oint 0 V = min(max(V(n1), V(vneg)+1.5), V(vpos)-1.5)
+Rout oint out 75
+Rq vpos vneg 6k
+.ends LM741

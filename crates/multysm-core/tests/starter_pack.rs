@@ -300,3 +300,48 @@ fn nmos_switches_on_and_off() {
     assert!(on < 0.3, "2N7000 on: Vds = {on}");
     assert!(off > 4.9, "2N7000 off: Vds = {off}");
 }
+
+// ---- Analog ----
+
+/// Inverting amplifier: Vin -> 1k -> in-, 10k from in- to out, in+ to ground,
+/// supplies at +/-12 V. Returns V(out).
+fn inverting_amp(part: &str, vin: &str) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vp = b.add("sources.dc_voltage", "VP", &[("voltage", "12")]);
+    let vn = b.add("sources.dc_voltage", "VN", &[("voltage", "12")]);
+    let vi = b.add("sources.dc_voltage", "VI", &[("voltage", vin)]);
+    let ri = b.add("basic.resistor", "RI", &[("resistance", "1k")]);
+    let rf = b.add("basic.resistor", "RF", &[("resistance", "10k")]);
+    let u1 = b.add(part, "U1", &[]);
+    b.connect((&vp, "n"), (&gnd, "1"));
+    b.connect((&vp, "p"), (&u1, "vp"));
+    b.connect((&vn, "p"), (&gnd, "1"));
+    b.connect((&vn, "n"), (&u1, "vn"));
+    b.connect((&vi, "n"), (&gnd, "1"));
+    b.connect((&vi, "p"), (&ri, "1"));
+    b.connect((&ri, "2"), (&u1, "inn"));
+    b.connect((&rf, "1"), (&u1, "inn"));
+    b.connect((&rf, "2"), (&u1, "out"));
+    b.connect((&u1, "inp"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &u1, "out")).unwrap()
+}
+
+#[test]
+fn ideal_opamp_inverting_gain_is_minus_ten() {
+    let out = inverting_amp("analog.opamp_ideal", "0.1");
+    assert!((out + 1.0).abs() < 0.01, "ideal op-amp out = {out}");
+    let overdriven = inverting_amp("analog.opamp_ideal", "2");
+    assert!((-12.01..=12.01).contains(&overdriven), "overdriven out = {overdriven}");
+}
+
+#[test]
+fn lm741_inverting_gain_is_minus_ten_and_clamps() {
+    let out = inverting_amp("analog.lm741", "0.1");
+    assert!((out + 1.0).abs() < 0.05, "LM741 out = {out}");
+    let overdriven = inverting_amp("analog.lm741", "2");
+    assert!((-12.0..=12.0).contains(&overdriven), "overdriven out = {overdriven}");
+    assert!(overdriven < -9.0, "LM741 should swing close to the negative rail, got {overdriven}");
+}

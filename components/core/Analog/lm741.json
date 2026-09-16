@@ -1,0 +1,12 @@
+{
+  "schema": 1, "id": "analog.lm741", "name": "LM741 Op-Amp", "category": "Analog",
+  "tags": ["opamp", "amplifier", "741", "U"],
+  "symbol": { "width": 60, "height": 60, "svg": "../symbols/opamp.svg",
+              "pins": [{ "id": "inn", "name": "-", "x": 0, "y": 20 },
+                       { "id": "inp", "name": "+", "x": 0, "y": 40 },
+                       { "id": "out", "name": "OUT", "x": 60, "y": 30 },
+                       { "id": "vp", "name": "V+", "x": 30, "y": 0 },
+                       { "id": "vn", "name": "V-", "x": 30, "y": 60 }] },
+  "spice": { "kind": "analog", "refPrefix": "U", "subckt": "../models/lm741.lib",
+             "template": "X{ref} {pin.inp} {pin.inn} {pin.out} {pin.vp} {pin.vn} LM741" }
+}
