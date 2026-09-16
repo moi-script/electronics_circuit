@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use multysm_app_lib::library_dto::components_root;
-use multysm_app_lib::simulation::{engine_config, run_simulation, SimOutcome, SimShared};
+use multysm_app_lib::simulation::{engine_config, run_claimed, run_simulation, SimOutcome, SimShared};
 use multysm_core::project_file::parse_project;
 
 /// V1 (10 V) -> R1 1k -> R2 1k -> ground. `ground: false` leaves out the ground part.
@@ -85,6 +85,29 @@ fn cancel_stops_a_long_run() {
     setter.join().unwrap();
     assert!(matches!(outcome, SimOutcome::Stopped), "{outcome:?}");
     assert!(started.elapsed() < Duration::from_secs(5));
+    assert!(!shared.running.load(Ordering::SeqCst));
+}
+
+#[test]
+fn claim_reports_busy_synchronously_and_does_not_touch_the_other_runs_cancel() {
+    let shared = Arc::new(SimShared::default());
+    shared.running.store(true, Ordering::SeqCst);
+    shared.cancel.store(true, Ordering::SeqCst);
+    assert!(SimShared::claim(&shared).is_none(), "a second claim while running must be refused");
+    // A refused claim must not clear the in-flight run's cancel flag.
+    assert!(shared.cancel.load(Ordering::SeqCst));
+}
+
+#[test]
+fn claim_then_run_claimed_behaves_like_run_simulation_and_releases_running() {
+    let shared = Arc::new(SimShared::default());
+    // A stale cancel from a previous run must be cleared by claim, synchronously.
+    shared.cancel.store(true, Ordering::SeqCst);
+    let guard = SimShared::claim(&shared).expect("run slot is free");
+    assert!(!shared.cancel.load(Ordering::SeqCst), "claim must reset cancel before any blocking work runs");
+    let outcome = run_claimed(&guard, &divider(r#"{ "type": "op" }"#, true), &root(), &engine_config(), Duration::from_secs(30));
+    let SimOutcome::Ok { .. } = outcome else { panic!("{outcome:?}") };
+    drop(guard);
     assert!(!shared.running.load(Ordering::SeqCst));
 }
 

@@ -57,29 +57,34 @@ pub fn engine_config() -> EngineConfig {
     EngineConfig::from_vendor_dir(&dir)
 }
 
-/// Clears `running` however the run ends (including a panic).
-struct RunningGuard<'a>(&'a AtomicBool);
+/// Clears `running` however the run ends (including a panic). Owns an `Arc` so it can be moved
+/// into a `spawn_blocking` task: the busy check and the `cancel` reset that guard against happen
+/// synchronously in the async command, before the blocking task (and therefore before a
+/// same-tick `stop_simulation` call) ever runs -- see `SimShared::claim`.
+pub struct RunningGuard(Arc<SimShared>);
 
-impl Drop for RunningGuard<'_> {
+impl Drop for RunningGuard {
     fn drop(&mut self) {
-        self.0.store(false, Ordering::SeqCst);
+        self.0.running.store(false, Ordering::SeqCst);
     }
 }
 
-pub fn run_simulation(
-    shared: &SimShared,
-    project: &Project,
-    components: &Path,
-    config: &EngineConfig,
-    timeout: Duration,
-) -> SimOutcome {
-    if shared.running.swap(true, Ordering::SeqCst) {
-        return SimOutcome::Busy;
+impl SimShared {
+    /// Claims the run slot and clears any stale `cancel` flag left by a previous run. Returns
+    /// `None` when another run is already in flight (the caller should reply `Busy`). Must be
+    /// called synchronously, before scheduling the blocking work, so a `stop_simulation` issued
+    /// right after `simulate` can never race the reset and get its cancel silently cleared.
+    pub fn claim(shared: &Arc<SimShared>) -> Option<RunningGuard> {
+        if shared.running.swap(true, Ordering::SeqCst) {
+            return None;
+        }
+        shared.cancel.store(false, Ordering::SeqCst);
+        Some(RunningGuard(shared.clone()))
     }
-    let _guard = RunningGuard(&shared.running);
-    shared.cancel.store(false, Ordering::SeqCst);
-    let started = Instant::now();
+}
 
+fn execute(shared: &SimShared, project: &Project, components: &Path, config: &EngineConfig, timeout: Duration) -> SimOutcome {
+    let started = Instant::now();
     shared.with_library(components, |library| {
         match simulate_with(project, library, config, &shared.cancel, Some(timeout)) {
             Ok((netlist, result)) => SimOutcome::Ok {
@@ -95,6 +100,36 @@ pub fn run_simulation(
             },
         }
     })
+}
+
+/// Runs a simulation, doing the busy check and `cancel` reset itself. Used directly by tests;
+/// the Tauri `simulate` command instead claims the run synchronously with `SimShared::claim`
+/// (see `run_claimed`) so that work happens before, not inside, the blocking task.
+pub fn run_simulation(
+    shared: &SimShared,
+    project: &Project,
+    components: &Path,
+    config: &EngineConfig,
+    timeout: Duration,
+) -> SimOutcome {
+    if shared.running.swap(true, Ordering::SeqCst) {
+        return SimOutcome::Busy;
+    }
+    struct LocalGuard<'a>(&'a AtomicBool);
+    impl Drop for LocalGuard<'_> {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::SeqCst);
+        }
+    }
+    let _guard = LocalGuard(&shared.running);
+    shared.cancel.store(false, Ordering::SeqCst);
+    execute(shared, project, components, config, timeout)
+}
+
+/// Runs a simulation whose run slot was already claimed with `SimShared::claim`. The guard is
+/// kept alive for the whole call and clears `running` on drop.
+pub fn run_claimed(guard: &RunningGuard, project: &Project, components: &Path, config: &EngineConfig, timeout: Duration) -> SimOutcome {
+    execute(&guard.0, project, components, config, timeout)
 }
 
 impl SimShared {
