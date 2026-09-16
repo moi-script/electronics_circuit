@@ -1,0 +1,24 @@
+{
+  "schema": 1, "id": "cmos.4011", "name": "4011 Quad 2-input NAND", "category": "CMOS",
+  "tags": ["nand", "gate", "logic", "4000", "cmos"],
+  "symbol": { "width": 80, "height": 160, "svg": "../symbols/dip14.svg",
+    "pins": [
+      { "id": "1",  "name": "1A",  "x": 0,  "y": 10,  "optional": true },
+      { "id": "2",  "name": "1B",  "x": 0,  "y": 20,  "optional": true },
+      { "id": "3",  "name": "1Y",  "x": 80, "y": 15,  "optional": true },
+      { "id": "4",  "name": "2A",  "x": 0,  "y": 40,  "optional": true },
+      { "id": "5",  "name": "2B",  "x": 0,  "y": 50,  "optional": true },
+      { "id": "6",  "name": "2Y",  "x": 80, "y": 45,  "optional": true },
+      { "id": "7",  "name": "VSS", "x": 40, "y": 160 },
+      { "id": "8",  "name": "3Y",  "x": 80, "y": 95,  "optional": true },
+      { "id": "9",  "name": "3A",  "x": 0,  "y": 90,  "optional": true },
+      { "id": "10", "name": "3B",  "x": 0,  "y": 100, "optional": true },
+      { "id": "11", "name": "4Y",  "x": 80, "y": 125, "optional": true },
+      { "id": "12", "name": "4A",  "x": 0,  "y": 120, "optional": true },
+      { "id": "13", "name": "4B",  "x": 0,  "y": 130, "optional": true },
+      { "id": "14", "name": "VDD", "x": 40, "y": 0 }
+    ] },
+  "spice": { "kind": "digital", "refPrefix": "U",
+             "template": "X{ref} {pin.1} {pin.2} {pin.3} {pin.4} {pin.5} {pin.6} {pin.7} {pin.8} {pin.9} {pin.10} {pin.11} {pin.12} {pin.13} {pin.14} CD4011",
+             "subckt": "../models/cd4011.lib" }
+}

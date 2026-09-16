@@ -1,0 +1,26 @@
+{
+  "schema": 1, "id": "cmos.4017", "name": "4017 Decade Counter", "category": "CMOS",
+  "tags": ["counter", "johnson", "divider", "4000", "cmos"],
+  "symbol": { "width": 80, "height": 140, "svg": "../symbols/dip16.svg",
+    "pins": [
+      { "id": "14", "name": "CLK", "x": 0,  "y": 20 },
+      { "id": "13", "name": "INH", "x": 0,  "y": 40 },
+      { "id": "15", "name": "RST", "x": 0,  "y": 60 },
+      { "id": "16", "name": "VDD", "x": 40, "y": 0 },
+      { "id": "8",  "name": "VSS", "x": 40, "y": 140 },
+      { "id": "3",  "name": "Q0",  "x": 80, "y": 10,  "optional": true },
+      { "id": "2",  "name": "Q1",  "x": 80, "y": 20,  "optional": true },
+      { "id": "4",  "name": "Q2",  "x": 80, "y": 30,  "optional": true },
+      { "id": "7",  "name": "Q3",  "x": 80, "y": 40,  "optional": true },
+      { "id": "10", "name": "Q4",  "x": 80, "y": 50,  "optional": true },
+      { "id": "1",  "name": "Q5",  "x": 80, "y": 60,  "optional": true },
+      { "id": "5",  "name": "Q6",  "x": 80, "y": 70,  "optional": true },
+      { "id": "6",  "name": "Q7",  "x": 80, "y": 80,  "optional": true },
+      { "id": "9",  "name": "Q8",  "x": 80, "y": 90,  "optional": true },
+      { "id": "11", "name": "Q9",  "x": 80, "y": 100, "optional": true },
+      { "id": "12", "name": "CO",  "x": 80, "y": 120, "optional": true }
+    ] },
+  "spice": { "kind": "digital", "refPrefix": "U",
+             "template": "X{ref} {pin.1} {pin.2} {pin.3} {pin.4} {pin.5} {pin.6} {pin.7} {pin.8} {pin.9} {pin.10} {pin.11} {pin.12} {pin.13} {pin.14} {pin.15} {pin.16} CD4017",
+             "subckt": "../models/cd4017.lib" }
+}

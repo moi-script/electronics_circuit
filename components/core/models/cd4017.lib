@@ -1,0 +1,30 @@
+* CD4017 decade counter (XSPICE digital, thresholds for 5 V supply) - multysm core pack
+* Five-stage Johnson counter clocked on CLK rising edges while INH is low; RST is asynchronous.
+* Subcircuit pin order follows the DIP: Q5 Q1 Q0 Q2 Q6 Q7 Q3 VSS Q8 Q4 Q9 CO INH CLK RST VDD
+.subckt CD4017 q5 q1 q0 q2 q6 q7 q3 vss q8 q4 q9 co inh clk rst vdd
+Rpwr vdd vss 1e6
+Ain [clk inh rst] [dclk dinh drst] cmos_in
+Aclk [dclk ~dinh] dce cmos_and
+Af1 s5n dce null drst s1 s1n cmos_dff
+Af2 s1 dce null drst s2 s2n cmos_dff
+Af3 s2 dce null drst s3 s3n cmos_dff
+Af4 s3 dce null drst s4 s4n cmos_dff
+Af5 s4 dce null drst s5 s5n cmos_dff
+Ad0 [s1n s5n] d0 cmos_and
+Ad1 [s1 s2n] d1 cmos_and
+Ad2 [s2 s3n] d2 cmos_and
+Ad3 [s3 s4n] d3 cmos_and
+Ad4 [s4 s5n] d4 cmos_and
+Ad5 [s1 s5] d5 cmos_and
+Ad6 [s1n s2] d6 cmos_and
+Ad7 [s2n s3] d7 cmos_and
+Ad8 [s3n s4] d8 cmos_and
+Ad9 [s4n s5] d9 cmos_and
+Aco s5n dco cmos_buf
+Aout [d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 dco] [q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 co] cmos_out
+.model cmos_in adc_bridge(in_low=1.5 in_high=3.5)
+.model cmos_out dac_bridge(out_low=0.05 out_high=4.95 out_undef=2.5)
+.model cmos_and d_and(rise_delay=20n fall_delay=20n)
+.model cmos_buf d_buffer(rise_delay=20n fall_delay=20n)
+.model cmos_dff d_dff(clk_delay=20n reset_delay=20n ic=0)
+.ends CD4017

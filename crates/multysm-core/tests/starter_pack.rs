@@ -345,3 +345,104 @@ fn lm741_inverting_gain_is_minus_ten_and_clamps() {
     assert!((-12.0..=12.0).contains(&overdriven), "overdriven out = {overdriven}");
     assert!(overdriven < -9.0, "LM741 should swing close to the negative rail, got {overdriven}");
 }
+
+// ---- Logic ----
+
+/// Powers `part` from 5 V on `supply.0` with `supply.1` grounded, drives each
+/// input pin from its own DC source, and returns V(output) at the end of a
+/// 1 ms transient.
+fn gate_output(part: &str, supply: (&str, &str), inputs: &[(&str, &str)], output: &str) -> f64 {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, tran("1m", "10u"));
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vcc = b.add("sources.dc_voltage", "VCC", &[("voltage", "5")]);
+    let u1 = b.add(part, "U1", &[]);
+    let mut sources = Vec::new();
+    for (i, (_, volts)) in inputs.iter().enumerate() {
+        sources.push(b.add("sources.dc_voltage", &format!("VIN{i}"), &[("voltage", *volts)]));
+    }
+    b.connect((&vcc, "p"), (&u1, supply.0));
+    b.connect((&vcc, "n"), (&gnd, "1"));
+    b.connect((&u1, supply.1), (&gnd, "1"));
+    for ((pin, _), source) in inputs.iter().zip(&sources) {
+        b.connect((source, "p"), (&u1, *pin));
+        b.connect((source, "n"), (&gnd, "1"));
+    }
+    let (netlist, result) = run(&lib, b);
+    result.last(&net(&netlist, &u1, output)).unwrap()
+}
+
+fn assert_level(label: &str, v: f64, high: bool, high_min: f64) {
+    if high {
+        assert!(v > high_min, "{label} = {v} V, expected high");
+    } else {
+        assert!(v < 0.5, "{label} = {v} V, expected low");
+    }
+}
+
+#[test]
+fn ttl_7404_inverts() {
+    for (a, high) in [("0", true), ("5", false)] {
+        let y = gate_output("ttl.7404", ("14", "7"), &[("1", a)], "2");
+        assert_level(&format!("NOT({a})"), y, high, 3.0);
+    }
+}
+
+fn two_input_truth_table(part: &str, supply: (&str, &str), high_min: f64, expect: [bool; 4]) {
+    for ((a, b), high) in [("0", "0"), ("0", "5"), ("5", "0"), ("5", "5")].into_iter().zip(expect) {
+        let y = gate_output(part, supply, &[("1", a), ("2", b)], "3");
+        assert_level(&format!("{part}({a},{b})"), y, high, high_min);
+    }
+}
+
+#[test]
+fn ttl_7408_and_truth_table() {
+    two_input_truth_table("ttl.7408", ("14", "7"), 3.0, [false, false, false, true]);
+}
+
+#[test]
+fn ttl_7432_or_truth_table() {
+    two_input_truth_table("ttl.7432", ("14", "7"), 3.0, [false, true, true, true]);
+}
+
+#[test]
+fn cmos_4011_nand_truth_table() {
+    two_input_truth_table("cmos.4011", ("14", "7"), 4.5, [true, true, true, false]);
+}
+
+#[test]
+fn cmos_4017_counts_on_clock_edges() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, tran("2.5m", "10u"));
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let vdd = b.add("sources.dc_voltage", "VDD", &[("voltage", "5")]);
+    let clk = b.add(
+        "sources.pulse_voltage",
+        "VCLK",
+        &[("v1", "0"), ("v2", "5"), ("delay", "500u"), ("rise", "1u"), ("fall", "1u"), ("width", "500u"), ("period", "1m")],
+    );
+    let rst = b.add(
+        "sources.pulse_voltage",
+        "VRST",
+        &[("v1", "5"), ("v2", "0"), ("delay", "100u"), ("rise", "1u"), ("fall", "1u"), ("width", "10"), ("period", "20")],
+    );
+    let u1 = b.add("cmos.4017", "U1", &[]);
+    b.connect((&vdd, "p"), (&u1, "16"));
+    b.connect((&vdd, "n"), (&gnd, "1"));
+    b.connect((&u1, "8"), (&gnd, "1"));
+    b.connect((&u1, "13"), (&gnd, "1"));
+    b.connect((&clk, "p"), (&u1, "14"));
+    b.connect((&clk, "n"), (&gnd, "1"));
+    b.connect((&rst, "p"), (&u1, "15"));
+    b.connect((&rst, "n"), (&gnd, "1"));
+    let (netlist, result) = run(&lib, b);
+
+    let at = |pin: &str, t: f64| result.sample_at(&net(&netlist, &u1, pin), t).unwrap();
+    // Pins: Q0 = 3, Q1 = 2, Q2 = 4. Rising clock edges at 0.5 ms and 1.5 ms.
+    assert_level("Q0 @0.3ms", at("3", 0.3e-3), true, 4.5);
+    assert_level("Q1 @0.3ms", at("2", 0.3e-3), false, 4.5);
+    assert_level("Q1 @1.0ms", at("2", 1.0e-3), true, 4.5);
+    assert_level("Q0 @1.0ms", at("3", 1.0e-3), false, 4.5);
+    assert_level("Q2 @2.0ms", at("4", 2.0e-3), true, 4.5);
+    assert_level("Q1 @2.0ms", at("2", 2.0e-3), false, 4.5);
+}

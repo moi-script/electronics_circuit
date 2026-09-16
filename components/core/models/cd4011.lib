@@ -1,0 +1,13 @@
+* CD4011 quad 2-input NAND (XSPICE digital, thresholds for 5 V supply) - multysm core pack
+.subckt CD4011 a1 b1 y1 a2 b2 y2 vss y3 a3 b3 y4 a4 b4 vdd
+Rpwr vdd vss 1e6
+Ain [a1 b1 a2 b2 a3 b3 a4 b4] [da1 db1 da2 db2 da3 db3 da4 db4] cmos_in
+Ag1 [da1 db1] dy1 cmos_nand
+Ag2 [da2 db2] dy2 cmos_nand
+Ag3 [da3 db3] dy3 cmos_nand
+Ag4 [da4 db4] dy4 cmos_nand
+Aout [dy1 dy2 dy3 dy4] [y1 y2 y3 y4] cmos_out
+.model cmos_in adc_bridge(in_low=1.5 in_high=3.5)
+.model cmos_out dac_bridge(out_low=0.05 out_high=4.95 out_undef=2.5)
+.model cmos_nand d_nand(rise_delay=20n fall_delay=20n)
+.ends CD4011
