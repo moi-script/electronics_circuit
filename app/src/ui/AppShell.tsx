@@ -47,6 +47,13 @@ export default function AppShell() {
     return () => window.clearTimeout(id);
   }, [notice]);
 
+  useEffect(() => {
+    // Test hook for Playwright; never shipped in production builds.
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as { __multysm?: typeof editorStore }).__multysm = editorStore;
+    }
+  }, []);
+
   const files = useMemo(
     () => backend && createFileActions({
       store: editorStore,

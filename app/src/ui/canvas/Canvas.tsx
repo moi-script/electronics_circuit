@@ -27,6 +27,14 @@ function useElementSize(ref: RefObject<HTMLDivElement | null>) {
   return size;
 }
 
+// A real double-click at the same spot finishes the wire tool's current path.
+// Konva/Chromium's native dblclick fires on the SECOND click anywhere on the canvas
+// within the OS double-click interval, with no distance check of its own -- two
+// unrelated single clicks a moment apart (routing two wire segments quickly, or two
+// automated clicks in a test) would otherwise be misread as "finish the wire".
+const DOUBLE_CLICK_MS = 400;
+const DOUBLE_CLICK_PX = 5;
+
 export default function Canvas() {
   const container = useRef<HTMLDivElement>(null);
   const size = useElementSize(container);
@@ -41,6 +49,17 @@ export default function Canvas() {
   const pan: Point = project.view?.pan ?? [0, 0];
   const [pointer, setPointer] = useState<Point | null>(null);
   const panStart = useRef<{ mouse: Point; pan: Point } | null>(null);
+  const lastClick = useRef<{ time: number; x: number; y: number } | null>(null);
+
+  const isDoubleClick = (e: Konva.KonvaEventObject<MouseEvent>): boolean => {
+    const now = performance.now();
+    const { clientX: x, clientY: y } = e.evt;
+    const prev = lastClick.current;
+    lastClick.current = { time: now, x, y };
+    return !!prev
+      && now - prev.time <= DOUBLE_CLICK_MS
+      && Math.hypot(x - prev.x, y - prev.y) <= DOUBLE_CLICK_PX;
+  };
 
   const worldPointer = (stage: Konva.Stage | null): Point | null => {
     const p = stage?.getPointerPosition();
@@ -63,11 +82,17 @@ export default function Canvas() {
     }
     if (e.evt.button !== 0) return;
     const world = worldPointer(e.target.getStage());
+    const doubleClick = isDoubleClick(e);
     if (!world) return;
     const state = editorStore.getState();
     if (state.tool.kind === "place") {
       state.placePart(state.tool.partId, world);
     } else if (state.tool.kind === "wire") {
+      if (doubleClick) {
+        if (state.tool.points.length >= 2) state.addWire(state.tool.points);
+        state.setTool({ kind: "wire", points: [] });
+        return;
+      }
       const target = snapTarget(world, state.project, parts);
       const step = wireClick(state.tool.points, target, isConnectionPoint(target, state.project, parts));
       if (step.finished) state.addWire(step.finished);
@@ -75,13 +100,6 @@ export default function Canvas() {
     } else if (e.target === e.target.getStage()) {
       state.select(null);
     }
-  };
-
-  const onDblClick = () => {
-    const state = editorStore.getState();
-    if (state.tool.kind !== "wire") return;
-    if (state.tool.points.length >= 2) state.addWire(state.tool.points);
-    state.setTool({ kind: "wire", points: [] });
   };
 
   const onMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -128,7 +146,6 @@ export default function Canvas() {
             endPan();
             setPointer(null);
           }}
-          onDblClick={onDblClick}
         >
           <Layer>
             <WireLayer project={project} parts={parts} selection={selection} selectable={tool.kind === "select"} />
