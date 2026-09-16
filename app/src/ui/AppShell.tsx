@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { errorMessage } from "@/backend/backend";
 import { getBackend } from "@/backend/index";
 import { editorStore, useEditor } from "@/model/store";
+import CommandPalette from "./CommandPalette";
 import FocusToolbar from "./FocusToolbar";
 import PartsPanel from "./PartsPanel";
 import PlotDock from "./PlotDock";
 import PropertiesPanel from "./PropertiesPanel";
 import StatusBar from "./StatusBar";
 import TopBar from "./TopBar";
+import { useShortcuts } from "./useShortcuts";
 
 // Konva needs a real browser canvas, so the canvas never renders on the server.
 const Canvas = dynamic(() => import("./canvas/Canvas"), { ssr: false, loading: () => <div className="h-full bg-bg" /> });
@@ -19,6 +21,9 @@ export default function AppShell() {
   const panels = useEditor((s) => s.panels);
   const selection = useEditor((s) => s.selection);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const openPalette = () => setPaletteOpen(true);
+  useShortcuts({ openPalette });
 
   useEffect(() => {
     let alive = true;
@@ -34,12 +39,12 @@ export default function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      {!focus && <TopBar />}
+      {!focus && <TopBar onOpenPalette={openPalette} />}
       <div className="flex min-h-0 flex-1">
         {!focus && panels.parts && <PartsPanel />}
         <main className="relative min-w-0 flex-1">
           <Canvas />
-          {focus && <FocusToolbar />}
+          {focus && <FocusToolbar onOpenPalette={openPalette} />}
           {loadError && (
             <div role="alert" className="absolute bottom-3 left-3 rounded border border-error bg-panel px-3 py-2 text-error">
               {loadError}
@@ -50,6 +55,7 @@ export default function AppShell() {
       </div>
       {!focus && panels.plot && <PlotDock />}
       {!focus && <StatusBar />}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

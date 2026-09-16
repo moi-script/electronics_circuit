@@ -2,11 +2,13 @@
 
 import type Konva from "konva";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Layer, Stage } from "react-konva";
+import { Circle, Layer, Line, Stage } from "react-konva";
 import { snapPoint } from "@/model/geometry";
 import { editorStore, useEditor } from "@/model/store";
 import type { Point } from "@/model/types";
-import { partMap } from "@/model/wiring";
+import { isConnectionPoint, wireClick, wirePreview } from "@/model/wireTool";
+import { partMap, snapTarget } from "@/model/wiring";
+import { tokens } from "@/theme/tokens";
 import PartNode from "./PartNode";
 import { isSpaceHeld, useSpaceHeld } from "./spaceHeld";
 import WireLayer from "./WireLayer";
@@ -65,9 +67,21 @@ export default function Canvas() {
     const state = editorStore.getState();
     if (state.tool.kind === "place") {
       state.placePart(state.tool.partId, world);
-    } else if (state.tool.kind === "select" && e.target === e.target.getStage()) {
+    } else if (state.tool.kind === "wire") {
+      const target = snapTarget(world, state.project, parts);
+      const step = wireClick(state.tool.points, target, isConnectionPoint(target, state.project, parts));
+      if (step.finished) state.addWire(step.finished);
+      state.setTool({ kind: "wire", points: step.points });
+    } else if (e.target === e.target.getStage()) {
       state.select(null);
     }
+  };
+
+  const onDblClick = () => {
+    const state = editorStore.getState();
+    if (state.tool.kind !== "wire") return;
+    if (state.tool.points.length >= 2) state.addWire(state.tool.points);
+    state.setTool({ kind: "wire", points: [] });
   };
 
   const onMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -88,13 +102,14 @@ export default function Canvas() {
 
   const placing = tool.kind === "place" ? parts.get(tool.partId) : undefined;
   const ghostAt = pointer && snapPoint(pointer);
+  const wireTarget = tool.kind === "wire" && pointer ? snapTarget(pointer, project, parts) : null;
 
   return (
     <div
       ref={container}
       data-testid="canvas"
       className="h-full w-full overflow-hidden"
-      style={gridStyle(zoom, pan)}
+      style={{ ...gridStyle(zoom, pan), cursor: tool.kind === "select" ? "default" : "crosshair" }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {size.width > 0 && (
@@ -113,6 +128,7 @@ export default function Canvas() {
             endPan();
             setPointer(null);
           }}
+          onDblClick={onDblClick}
         >
           <Layer>
             <WireLayer project={project} parts={parts} selection={selection} selectable={tool.kind === "select"} />
@@ -136,6 +152,19 @@ export default function Canvas() {
                 interactive={false}
                 ghost
               />
+            )}
+            {tool.kind === "wire" && tool.points.length > 0 && (
+              <Line
+                points={wirePreview(tool.points, wireTarget).flat()}
+                stroke={tokens.wire}
+                strokeWidth={1.5}
+                strokeScaleEnabled={false}
+                dash={[4, 4]}
+                listening={false}
+              />
+            )}
+            {wireTarget && (
+              <Circle x={wireTarget[0]} y={wireTarget[1]} radius={4} stroke={tokens.accent} strokeWidth={1} strokeScaleEnabled={false} listening={false} />
             )}
           </Layer>
         </Stage>
