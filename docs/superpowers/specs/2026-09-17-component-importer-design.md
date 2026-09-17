@@ -116,9 +116,10 @@ only parse what a circuit uses.
   If they don't, the setting is applied only to netlists containing parts whose id starts with
   `imported.`.
 - On commit, each ticked part gets an operating-point run: one instance with every pin to ground
-  through 1 MΩ, plus a 1 V source through 1 kΩ on its first pin, 5 s timeout. If ngspice fails to
-  parse or converge, the part becomes `failed` with the log and is not written. The test checks
-  loading, not correct behavior.
+  through 1 MΩ, plus a 1 V source through 1 kΩ on its first pin, 5 s timeout. If ngspice rejects the
+  circuit while loading it, the part becomes `failed` with the log and is not written. Convergence
+  failures and timeouts under this artificial bias count as a pass. The test checks loading, not
+  correct behavior.
 
 ## 4. KiCad symbols (Plan 5b)
 
