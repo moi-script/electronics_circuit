@@ -13,7 +13,9 @@ function defaultText(param: Param): string {
   return param.unit ? `${param.default} ${param.unit}` : param.default;
 }
 
-export default function ComponentBrowser({ open, onClose }: { open: boolean; onClose(): void }) {
+export default function ComponentBrowser({ open, onClose, onImport, onManageImports }: {
+  open: boolean; onClose(): void; onImport?(): void; onManageImports?(): void;
+}) {
   const library = useEditor((s) => s.library);
   const setTool = useEditor((s) => s.setTool);
   const rememberBrowser = useEditor((s) => s.rememberBrowser);
@@ -89,6 +91,16 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
             onChange={(e) => { setQuery(e.target.value); setActiveId(null); }}
             className="min-w-0 flex-1 rounded border border-line bg-bg px-2 py-1 text-text placeholder:text-muted focus:border-accent focus:outline-none"
           />
+          {onImport && (
+            <button onClick={() => { close(); onImport(); }} className="rounded px-2 py-1 text-muted hover:bg-line hover:text-text">
+              Import parts…
+            </button>
+          )}
+          {onManageImports && (
+            <button onClick={() => { close(); onManageImports(); }} className="rounded px-2 py-1 text-muted hover:bg-line hover:text-text">
+              Manage imports
+            </button>
+          )}
           <button aria-label="Close" onClick={close} className="rounded px-2 py-1 text-muted hover:bg-line hover:text-text">✕</button>
         </div>
 
@@ -134,6 +146,9 @@ export default function ComponentBrowser({ open, onClose }: { open: boolean; onC
                   >
                     <SymbolPreview part={part} width={24} height={16} />
                     <span className="min-w-0 flex-1 truncate">{part.manifest.name}</span>
+                    {part.manifest.tags.includes("imported") && (
+                      <span className="rounded border border-line px-1 text-[10px] text-accent">Imported</span>
+                    )}
                     {searching && <span className="text-[11px] text-muted">{part.manifest.category}</span>}
                   </li>
                 );

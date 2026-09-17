@@ -6,6 +6,8 @@ import { errorMessage, type Backend } from "@/backend/backend";
 import { getBackend } from "@/backend/index";
 import { editorStore, useEditor } from "@/model/store";
 import ComponentBrowser from "./ComponentBrowser";
+import ImportDialog from "./ImportDialog";
+import ManageImports from "./ManageImports";
 import { createFileActions } from "./fileActions";
 import FocusToolbar from "./FocusToolbar";
 import PlotDock from "./plot/PlotDock";
@@ -27,7 +29,17 @@ export default function AppShell() {
   const [backend, setBackend] = useState<Backend | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const notify = useCallback((message: string) => setNotice(message), []);
+  const reloadLibrary = useCallback(async () => {
+    if (!backend) return;
+    try {
+      editorStore.getState().setLibrary(await backend.loadLibrary());
+    } catch (e) {
+      notify(`Could not load parts: ${errorMessage(e)}`);
+    }
+  }, [backend, notify]);
 
   useEffect(() => {
     let alive = true;
@@ -74,7 +86,7 @@ export default function AppShell() {
     save: files ? () => void files.save() : undefined,
     saveAs: files ? () => void files.saveAs() : undefined,
     toggleRun: runActions ? runActions.toggle : undefined,
-    isBlocked: () => browserOpen,
+    isBlocked: () => browserOpen || importOpen || manageOpen,
   });
   useAutosave(backend, notify);
 
@@ -100,7 +112,26 @@ export default function AppShell() {
       </div>
       {!focus && panels.plot && <PlotDock />}
       {!focus && <StatusBar />}
-      <ComponentBrowser open={browserOpen} onClose={() => setBrowserOpen(false)} />
+      <ComponentBrowser
+        open={browserOpen}
+        onClose={() => setBrowserOpen(false)}
+        onImport={backend ? () => setImportOpen(true) : undefined}
+        onManageImports={backend ? () => setManageOpen(true) : undefined}
+      />
+      {backend && (
+        <ImportDialog
+          backend={backend}
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onImported={(report) => {
+            void reloadLibrary();
+            if (report.imported.length > 0) setBrowserOpen(true);
+          }}
+        />
+      )}
+      {backend && (
+        <ManageImports backend={backend} open={manageOpen} onClose={() => setManageOpen(false)} onChanged={() => void reloadLibrary()} />
+      )}
     </div>
   );
 }

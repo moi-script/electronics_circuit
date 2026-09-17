@@ -153,4 +153,25 @@ describe("ComponentBrowser", () => {
     expect(screen.getByRole("button", { name: "group Transistors" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("option", { name: /2N2222/ })).toHaveAttribute("aria-selected", "true");
   });
+
+  it("offers import and manage buttons when handlers are given", () => {
+    const onImport = vi.fn();
+    const onManageImports = vi.fn();
+    render(<ComponentBrowser open onClose={() => {}} onImport={onImport} onManageImports={onManageImports} />);
+    fireEvent.click(screen.getByRole("button", { name: "Import parts…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Manage imports" }));
+    expect(onImport).toHaveBeenCalled();
+    expect(onManageImports).toHaveBeenCalled();
+  });
+
+  it("badges imported parts", () => {
+    const library = structuredClone(editorStore.getState().library!);
+    const resistor = library.parts.find((p) => p.manifest.id === "basic.resistor")!;
+    library.parts.push({ ...resistor, manifest: { ...resistor.manifest, id: "imported.x.r", name: "Imported R", tags: ["imported"] } });
+    editorStore.getState().setLibrary(library);
+    render(<ComponentBrowser open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "group Basic" }));
+    expect(within(screen.getByRole("option", { name: /Imported R/ })).getByText("Imported")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Import parts…" })).toBeNull();
+  });
 });
