@@ -126,5 +126,9 @@ fn quick_runs_finish_without_waiting_for_the_poll_limits() {
     run_netlist(&config, "* warm\nV1 x 0 DC 1\nR1 x 0 1k\n.op\n.end\n").unwrap();
     let started = Instant::now();
     run_netlist(&config, "* quick\nV1 x 0 DC 1\nR1 x 0 1k\n.op\n.end\n").unwrap();
-    assert!(started.elapsed() < Duration::from_millis(800), "op took {:?}", started.elapsed());
+    // `engine::START_WAIT` (1 s) is the grace period `run_netlist_with` gives `ngSpice_running()`
+    // to come up before it starts trusting the poll; this guards that a run this small finishes
+    // on its own well before that window, rather than accidentally blocking on it. 900 ms keeps
+    // that margin meaningful while giving slower CI runners more room than 800 ms did.
+    assert!(started.elapsed() < Duration::from_millis(900), "op took {:?}", started.elapsed());
 }
