@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import type { SimOutcome } from "@/model/simTypes";
 import type { LibraryData, Project } from "@/model/types";
 import type { Backend } from "./backend";
 
@@ -18,4 +19,6 @@ export const tauriBackend: Backend = {
   writeRecovery: (project) => invoke<void>("write_recovery", { project }),
   readRecovery: () => invoke<Project | null>("read_recovery"),
   clearRecovery: () => invoke<void>("clear_recovery"),
+  simulate: (project) => invoke<SimOutcome>("simulate", { project }),
+  stopSimulation: () => invoke<void>("stop_simulation"),
 };

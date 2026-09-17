@@ -85,4 +85,23 @@ describe("file actions", () => {
     await files.newFile();
     expect(s().project.components).toHaveLength(0);
   });
+
+  it("stops a running simulation before starting a new project", async () => {
+    confirm.mockReturnValue(true);
+    const stop = vi.spyOn(backend, "stopSimulation");
+    s().startRun();
+    await files.newFile();
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(s().project.components).toHaveLength(0);
+  });
+
+  it("stops a running simulation before opening a project", async () => {
+    await files.save();
+    confirm.mockReturnValue(true);
+    const stop = vi.spyOn(backend, "stopSimulation");
+    s().startRun();
+    await files.open();
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(s().project.components).toHaveLength(1);
+  });
 });

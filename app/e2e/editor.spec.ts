@@ -47,7 +47,9 @@ test.beforeEach(async ({ page }) => {
 
 test("shows the soft-dark layout", async ({ page }) => {
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(27, 29, 35)");
-  await expect(page.getByRole("button", { name: "▶ Run" })).toBeDisabled();
+  // Run is enabled once the library loads even for an empty circuit; RunButton disables only
+  // for an invalid analysis or a missing backend (see RunButton.test.tsx).
+  await expect(page.getByRole("button", { name: "▶ Run" })).toBeEnabled();
   await page.getByRole("button", { name: "Components" }).click();
   const dialog = page.getByRole("dialog", { name: "Add component" });
   await expect(dialog.getByRole("button", { name: /^group / })).toHaveCount(15);

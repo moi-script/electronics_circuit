@@ -1,3 +1,4 @@
+import type { SimOutcome } from "@/model/simTypes";
 import type { LibraryData, Project } from "@/model/types";
 
 /** Everything the UI needs from outside the webview. */
@@ -11,6 +12,8 @@ export interface Backend {
   writeRecovery(project: Project): Promise<void>;
   readRecovery(): Promise<Project | null>;
   clearRecovery(): Promise<void>;
+  simulate(project: Project): Promise<SimOutcome>;
+  stopSimulation(): Promise<void>;
 }
 
 /** Tauri commands reject with strings; everything else with Errors. */

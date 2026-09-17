@@ -67,11 +67,14 @@ pub fn build_netlist(project: &Project, library: &Library) -> Result<Netlist, Ve
         if pin.optional {
             tie_lines.push(format!("Rtie_{net} {net} 0 1e9"));
         } else {
-            errors.push(NetlistError::new(
-                ErrorCode::UnconnectedPin,
-                format!("{} pin {} is not connected", inst.reference, pin.name.as_deref().unwrap_or(&pin.id)),
-                Some(uid.as_str()),
-            ));
+            errors.push(
+                NetlistError::new(
+                    ErrorCode::UnconnectedPin,
+                    format!("{} pin {} is not connected", inst.reference, pin.name.as_deref().unwrap_or(&pin.id)),
+                    Some(uid.as_str()),
+                )
+                .with_pin(&pin.id),
+            );
         }
     }
 

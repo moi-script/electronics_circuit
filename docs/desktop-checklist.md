@@ -12,4 +12,7 @@ ngspice in `vendor/ngspice` (needed from Plan 3).
 7. Save → native dialog → reopen the file: the circuit is identical.
 8. Make a change, wait 30 s, then close the window without saving. Reopen: the "Restore unsaved work" banner appears, and Restore brings the change back.
 9. F11 hides every panel and shows the floating toolbar; "Exit focus" restores them.
-10. `cargo test --workspace` and `npm --prefix app test` pass.
+10. Build an RC circuit (DC source, 1k, 1µ, ground), Transient · 10 ms, ▶ Run: the plot dock opens; tick the capacitor net and a rising curve appears.
+11. Set Transient stop time to `10` and max step `1u`, Run, then ■ Stop within a second: the status bar shows "Stopped" and a new Run works.
+12. LED + 330 Ω + 5 V + ground, Operating point, Run: the anode net label reads about 1.9 V; remove the ground and Run: the error bar says the circuit has no ground.
+13. `cargo test --workspace` and `npm --prefix app test` pass.

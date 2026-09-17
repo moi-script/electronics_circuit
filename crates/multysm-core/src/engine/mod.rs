@@ -10,7 +10,9 @@ use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
@@ -36,6 +38,10 @@ pub enum EngineError {
     Run { log: Vec<String> },
     #[error("ngspice is already loaded from a different path")]
     ConfigMismatch,
+    #[error("the simulation was stopped")]
+    Stopped,
+    #[error("the simulation took longer than {seconds} s and was stopped")]
+    Timeout { seconds: u64 },
 }
 
 impl EngineError {
@@ -46,6 +52,8 @@ impl EngineError {
             EngineError::Circuit { .. } => "circuit",
             EngineError::Run { .. } => "run",
             EngineError::ConfigMismatch => "config_mismatch",
+            EngineError::Stopped => "stopped",
+            EngineError::Timeout { .. } => "timeout",
         }
     }
 
@@ -117,7 +125,28 @@ impl SimResult {
 static LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
 static ENGINE: Mutex<Option<Engine>> = Mutex::new(None);
 
+/// Set by ngspice's background-thread callback: `true` when no background
+/// run is active. Cleared just before `bg_run`.
+static BG_IDLE: AtomicBool = AtomicBool::new(true);
+
+const POLL: Duration = Duration::from_millis(10);
+/// If ngspice never reports the background thread, give up waiting after this.
+const START_WAIT: Duration = Duration::from_secs(1);
+/// Longest wait for a halted run to wind down.
+const HALT_WAIT: Duration = Duration::from_secs(5);
+
 pub fn run_netlist(config: &EngineConfig, netlist: &str) -> Result<SimResult, EngineError> {
+    run_netlist_with(config, netlist, &AtomicBool::new(false), None)
+}
+
+/// Like `run_netlist`, but the analysis runs on ngspice's background thread and
+/// is halted when `cancel` becomes true (`Stopped`) or `timeout` passes (`Timeout`).
+pub fn run_netlist_with(
+    config: &EngineConfig,
+    netlist: &str,
+    cancel: &AtomicBool,
+    timeout: Option<Duration>,
+) -> Result<SimResult, EngineError> {
     let mut guard = ENGINE.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
         *guard = Some(Engine::start(config)?);
@@ -126,7 +155,7 @@ pub fn run_netlist(config: &EngineConfig, netlist: &str) -> Result<SimResult, En
     if engine.dll_path != config.dll_path {
         return Err(EngineError::ConfigMismatch);
     }
-    engine.run(netlist)
+    engine.run(netlist, cancel, timeout)
 }
 
 struct Engine {
@@ -181,7 +210,12 @@ impl Engine {
         }
     }
 
-    fn run(&self, netlist: &str) -> Result<SimResult, EngineError> {
+    fn run(
+        &self,
+        netlist: &str,
+        cancel: &AtomicBool,
+        timeout: Option<Duration>,
+    ) -> Result<SimResult, EngineError> {
         self.command("remcirc");
         self.command("destroy all");
         take_log();
@@ -199,9 +233,38 @@ impl Engine {
             return Err(EngineError::Circuit { log });
         }
 
-        let status = self.command("run");
+        BG_IDLE.store(false, Ordering::SeqCst);
+        let status = self.command("bg_run");
+        if status != 0 {
+            BG_IDLE.store(true, Ordering::SeqCst);
+            log.extend(take_log());
+            return Err(EngineError::Run { log });
+        }
+        let started = Instant::now();
+        loop {
+            if BG_IDLE.load(Ordering::SeqCst) {
+                break;
+            }
+            // Fallback when the thread callback never arrives.
+            if started.elapsed() > START_WAIT && !unsafe { (self.api.running)() } {
+                break;
+            }
+            let stop = if cancel.load(Ordering::SeqCst) {
+                Some(EngineError::Stopped)
+            } else {
+                timeout
+                    .filter(|limit| started.elapsed() >= *limit)
+                    .map(|limit| EngineError::Timeout { seconds: limit.as_secs() })
+            };
+            if let Some(error) = stop {
+                self.halt();
+                take_log();
+                return Err(error);
+            }
+            std::thread::sleep(POLL);
+        }
         log.extend(take_log());
-        if status != 0 || has_error(&log) {
+        if has_error(&log) {
             return Err(EngineError::Run { log });
         }
 
@@ -214,6 +277,18 @@ impl Engine {
             return Err(EngineError::Run { log });
         }
         Ok(SimResult { plot, vectors, log })
+    }
+
+    fn halt(&self) {
+        self.command("bg_halt");
+        let started = Instant::now();
+        while !BG_IDLE.load(Ordering::SeqCst)
+            && unsafe { (self.api.running)() }
+            && started.elapsed() < HALT_WAIT
+        {
+            std::thread::sleep(POLL);
+        }
+        BG_IDLE.store(true, Ordering::SeqCst);
     }
 
     unsafe fn collect_vectors(&self) -> (String, BTreeMap<String, Vector>) {
@@ -300,6 +375,7 @@ unsafe extern "C" fn on_init_data(_data: *mut c_void, _id: c_int, _user: *mut c_
     0
 }
 
-unsafe extern "C" fn on_bg_thread(_running: bool, _id: c_int, _user: *mut c_void) -> c_int {
+unsafe extern "C" fn on_bg_thread(noruns: bool, _id: c_int, _user: *mut c_void) -> c_int {
+    BG_IDLE.store(noruns, Ordering::SeqCst);
     0
 }

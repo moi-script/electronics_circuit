@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Circle, Group, Image as KonvaImage, Rect, Text } from "react-konva";
 import { partBounds, snapPoint } from "@/model/geometry";
 import { editorStore } from "@/model/store";
@@ -15,16 +16,19 @@ interface Props {
   /** Clickable and draggable (select tool only). */
   interactive: boolean;
   ghost?: boolean;
+  errors?: string[];
 }
 
-export default function PartNode({ inst, part, selected, interactive, ghost = false }: Props) {
+export default function PartNode({ inst, part, selected, interactive, ghost = false, errors }: Props) {
   const { width, height, pins } = part.manifest.symbol;
-  const image = useSymbolImage(part.svg, selected ? tokens.selected : tokens.text, width, height);
+  const color = errors && errors.length > 0 ? tokens.error : selected ? tokens.selected : tokens.text;
+  const image = useSymbolImage(part.svg, color, width, height);
   const bounds = partBounds(inst, part.manifest.symbol);
   const firstParam = part.manifest.params[0];
   const label = firstParam ? `${inst.ref} ${inst.params[firstParam.key] ?? firstParam.default}` : inst.ref;
   // Reactive so `draggable` updates before Konva's own mousedown-driven drag start.
   const spaceHeld = useSpaceHeld();
+  const [hovered, setHovered] = useState(false);
 
   return (
     <>
@@ -36,6 +40,8 @@ export default function PartNode({ inst, part, selected, interactive, ghost = fa
         opacity={ghost ? 0.5 : 1}
         listening={interactive}
         draggable={interactive && !spaceHeld}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return; // let middle-drag pan the stage
           if (isSpaceHeld()) return; // let the click bubble to the Stage so Space+drag can pan
@@ -66,9 +72,13 @@ export default function PartNode({ inst, part, selected, interactive, ghost = fa
           text={label}
           fontSize={11}
           fontFamily="Segoe UI, system-ui, sans-serif"
-          fill={selected ? tokens.selected : tokens.muted}
+          fill={errors?.length ? tokens.error : selected ? tokens.selected : tokens.muted}
           listening={false}
         />
+      )}
+      {!ghost && hovered && errors?.length && (
+        <Text x={bounds.x} y={bounds.y + bounds.height + 6} text={errors.join("\n")} fontSize={11}
+          fontFamily="Segoe UI, system-ui, sans-serif" fill={tokens.error} listening={false} />
       )}
     </>
   );

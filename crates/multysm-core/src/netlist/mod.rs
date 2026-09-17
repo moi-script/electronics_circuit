@@ -29,14 +29,23 @@ pub enum ErrorCode {
 /// A problem found before simulation, tied to a component when possible so
 /// the editor can highlight it.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NetlistError {
     pub code: ErrorCode,
     pub message: String,
     pub component_uid: Option<String>,
+    /// Pin id for pin-level problems (unconnected pins).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pin: Option<String>,
 }
 
 impl NetlistError {
     pub fn new(code: ErrorCode, message: String, uid: Option<&str>) -> Self {
-        Self { code, message, component_uid: uid.map(str::to_string) }
+        Self { code, message, component_uid: uid.map(str::to_string), pin: None }
+    }
+
+    pub fn with_pin(mut self, pin: &str) -> Self {
+        self.pin = Some(pin.to_string());
+        self
     }
 }

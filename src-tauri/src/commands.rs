@@ -8,6 +8,7 @@ use multysm_core::project_file::{parse_project, project_to_json};
 use tauri::{AppHandle, Manager};
 
 use crate::library_dto::{components_root, library_dto, LibraryDto};
+use crate::simulation::{engine_config, run_claimed, SimOutcome, SimShared, SimState, SIM_TIMEOUT};
 
 pub fn read_project_file(path: &Path) -> Result<Project, String> {
     let text = fs::read_to_string(path).map_err(|e| format!("Cannot open {}: {e}", path.display()))?;
@@ -60,4 +61,24 @@ pub fn clear_recovery(app: AppHandle) -> Result<(), String> {
         fs::remove_file(path).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn simulate(state: tauri::State<'_, SimState>, project: Project) -> Result<SimOutcome, String> {
+    // Claim the run slot and reset `cancel` synchronously, before scheduling the blocking task,
+    // so a Stop issued right after Run can't be cleared by a cancel-reset that runs later on the
+    // blocking thread (see `SimShared::claim`).
+    let Some(guard) = SimShared::claim(&state.0) else {
+        return Ok(SimOutcome::Busy);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        run_claimed(&guard, &project, &components_root(), &engine_config(), SIM_TIMEOUT)
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn stop_simulation(state: tauri::State<'_, SimState>) {
+    state.0.cancel.store(true, std::sync::atomic::Ordering::SeqCst);
 }

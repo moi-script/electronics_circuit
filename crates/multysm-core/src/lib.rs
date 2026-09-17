@@ -5,16 +5,20 @@ pub mod engine;
 pub mod library;
 pub mod netlist;
 pub mod project_file;
+pub mod results;
 pub mod si;
 
+use std::sync::atomic::AtomicBool;
+use std::time::Duration;
+
 use circuit::Project;
-use engine::{run_netlist, EngineConfig, EngineError, SimResult};
+use engine::{run_netlist_with, EngineConfig, EngineError, SimResult};
 use library::Library;
 use netlist::{build_netlist, Netlist, NetlistError};
 
 /// Serializes as `{ "kind": "netlist", "message", "errors": [NetlistError] }`
 /// or, for engine failures, the `EngineError` shape
-/// (`{ "kind": "load"|"circuit"|"run"|"config_mismatch", "message", "log"? }`).
+/// (`{ "kind": "load"|"circuit"|"run"|"config_mismatch"|"stopped"|"timeout", "message", "log"? }`).
 #[derive(Debug, thiserror::Error)]
 pub enum SimulateError {
     #[error("the circuit has {} problem(s)", .0.len())]
@@ -46,7 +50,18 @@ pub fn simulate(
     library: &Library,
     config: &EngineConfig,
 ) -> Result<(Netlist, SimResult), SimulateError> {
+    simulate_with(project, library, config, &AtomicBool::new(false), None)
+}
+
+/// `simulate` with cancellation and an optional time limit (see `run_netlist_with`).
+pub fn simulate_with(
+    project: &Project,
+    library: &Library,
+    config: &EngineConfig,
+    cancel: &AtomicBool,
+    timeout: Option<Duration>,
+) -> Result<(Netlist, SimResult), SimulateError> {
     let netlist = build_netlist(project, library).map_err(SimulateError::Netlist)?;
-    let result = run_netlist(config, &netlist.text)?;
+    let result = run_netlist_with(config, &netlist.text, cancel, timeout)?;
     Ok((netlist, result))
 }

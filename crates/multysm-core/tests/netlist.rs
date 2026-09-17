@@ -345,3 +345,34 @@ fn choice_params_render_their_value_and_reject_other_values() {
         }
     }
 }
+
+#[test]
+fn unconnected_pin_errors_name_the_pin_and_serialize_camel_case() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let gnd = b.add("sources.ground", "GND1", &[]);
+    let r1 = b.add("basic.resistor", "R1", &[]);
+    b.connect((&r1, "1"), (&gnd, "1"));
+    let errors = build_netlist(&b.build(), &lib).unwrap_err();
+    let error = errors.iter().find(|e| e.code == ErrorCode::UnconnectedPin).expect("unconnected pin error");
+    assert_eq!(error.pin.as_deref(), Some("2"));
+    let json = serde_json::to_value(error).unwrap();
+    assert_eq!(json["componentUid"], r1.as_str());
+    assert_eq!(json["pin"], "2");
+    assert_eq!(json["code"], "unconnected_pin");
+}
+
+#[test]
+fn errors_without_a_pin_omit_the_field() {
+    let lib = core_library();
+    let mut b = CircuitBuilder::new(&lib, Analysis::Op);
+    let r1 = b.add("basic.resistor", "R1", &[]);
+    let r2 = b.add("basic.resistor", "R2", &[]);
+    b.connect((&r1, "1"), (&r2, "1"));
+    b.connect((&r1, "2"), (&r2, "2"));
+    let errors = build_netlist(&b.build(), &lib).unwrap_err();
+    let no_ground = errors.iter().find(|e| e.code == ErrorCode::NoGround).unwrap();
+    let json = serde_json::to_value(no_ground).unwrap();
+    assert!(json.get("pin").is_none());
+    assert!(json["componentUid"].is_null());
+}
