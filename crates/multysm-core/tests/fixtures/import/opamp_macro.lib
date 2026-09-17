@@ -1,0 +1,17 @@
+* multysm test fixture: simple op-amp macromodel in PSpice style
+* Connections: non-inverting input, inverting input, positive supply, negative supply, output
+.SUBCKT DEMO_OPAMP INP INN VCC VEE OUT PARAMS: AOL=100k ROUT=75
+XIN INP INN MID DEMO_INPUT
+EGAIN GAINOUT 0 VALUE={V(MID)*AOL}
+RO GAINOUT OUT {ROUT}
+DHI OUT VCC DCLAMP
+DLO VEE OUT DCLAMP
+.MODEL DCLAMP D(IS=1e-15)
+.ENDS DEMO_OPAMP
+*
+.SUBCKT DEMO_INPUT P N O
+RIN P N 2meg
+EDIFF O 0 P N 1
+RDIFF O 0 1meg
+.ENDS
+.include "not_here.lib"

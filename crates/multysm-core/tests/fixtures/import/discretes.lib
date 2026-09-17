@@ -1,0 +1,5 @@
+* multysm test fixture: discrete device models
+.model DEMO_SCHOTTKY D(IS=31.7u N=1.373 RS=0.051 CJO=110p BV=40)
+.model DEMO_NPN NPN(IS=1e-14 BF=200 VAF=100)
+.model DEMO_PMOS PMOS(LEVEL=1 VTO=-2 KP=0.05)
+.model DEMO_SWITCH SW(VT=1 RON=1)
