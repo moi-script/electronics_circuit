@@ -111,10 +111,10 @@ only parse what a circuit uses.
   the named file together with this one.
 
 ### 3.6 Dialect and smoke test
-- The engine sends `set ngbehavior=psa` before loading each circuit, so PSpice/LTspice-style models
-  load. The existing `crates/multysm-core/tests/circuits.rs` and starter pack tests must still pass.
-  If they don't, the setting is applied only to netlists containing parts whose id starts with
-  `imported.`.
+- PSpice compatibility mode (`ngbehavior=psa`) is **not** enabled. Tried in Plan 5a: nothing
+  required it (PSpice `VALUE={…}` sources load natively), and it changes global netlist semantics
+  (a node named `gnd` is no longer ground, which core subcircuits such as the 555 and 74xx models
+  use as a port name). Models that need more fail the smoke test and are reported with their log.
 - On commit, each ticked part gets an operating-point run: one instance with every pin to ground
   through 1 MΩ, plus a 1 V source through 1 kΩ on its first pin, 5 s timeout. If ngspice rejects the
   circuit while loading it, the part becomes `failed` with the log and is not written. Convergence

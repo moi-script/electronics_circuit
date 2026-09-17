@@ -132,3 +132,13 @@ fn quick_runs_finish_without_waiting_for_the_poll_limits() {
     // that margin meaningful while giving slower CI runners more room than 800 ms did.
     assert!(started.elapsed() < Duration::from_millis(900), "op took {:?}", started.elapsed());
 }
+
+#[test]
+fn pspice_value_sources_load() {
+    // `VALUE={…}` controlled sources are PSpice syntax that vendor macromodels use. ngspice accepts them
+    // without its PSpice compatibility mode, which stays off (see the importer spec §3.6).
+    let netlist = "* psa\nV1 in 0 DC 1.5\nE1 out 0 VALUE={V(in)*2}\nR1 out 0 1k\n.op\n.end\n";
+    let result = multysm_core::engine::run_netlist(&common::engine_config(), netlist).expect("PSpice syntax loads");
+    let out = result.last("out").unwrap();
+    assert!((out - 3.0).abs() < 1e-6, "v(out) = {out}");
+}

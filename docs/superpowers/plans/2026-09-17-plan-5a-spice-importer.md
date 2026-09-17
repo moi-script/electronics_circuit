@@ -1638,29 +1638,20 @@ If `engine_smoke.rs` has no `mod common;`, add `mod common;` at its top.
 Run: `cd /c/multysm && cargo test -p multysm-core --test engine_smoke pspice_value_sources_load`
 Expected: FAIL with an `EngineError::Circuit` log about `VALUE`/an unknown parameter. If it already passes, ngspice accepts this syntax natively. Keep the test anyway and still do Step 3, because other PSpice constructs need the mode.
 
-- [ ] **Step 3: Enable PSpice compatibility**
+- [ ] **Step 3: PSpice compatibility — decided against (done during execution)**
 
-In `crates/multysm-core/src/engine/mod.rs`, `Engine::run`, change the start of the function to:
-```rust
-        self.command("remcirc");
-        self.command("destroy all");
-        // Vendor models are mostly PSpice/LTspice dialect; `psa` makes ngspice accept that syntax
-        // everywhere while keeping its own. Read when the next circuit is parsed.
-        self.command("set ngbehavior=psa");
-        take_log();
-```
+`set ngbehavior=psa` was tried and reverted. `pspice_value_sources_load` passes without it, and
+`psa` stops treating `gnd` as ground, which core subcircuits (`ne555.lib`, `sn74xx.lib`) use as a port
+name. No engine change; spec §3.6 updated.
+
+Known environment issue: `timeout_stops_a_long_run` and `cancel_stops_a_long_run_and_the_engine_is_reusable`
+fail on machines with less than ~3.2 GB free memory ("memory required (3200003200 Bytes) is more than
+memory available"), with or without `psa`. They are unrelated to this plan.
 
 - [ ] **Step 4: Run the whole core suite**
 
 Run: `cd /c/multysm && cargo test -p multysm-core`
-Expected: all tests pass, including `pspice_value_sources_load` and every starter-pack circuit test.
-
-If `pspice_value_sources_load` still fails, `set ngbehavior` isn't read after start-up by this ngspice build. Then:
-1. Remove the `set` command.
-2. Write `.spiceinit` (content `set ngbehavior=psa\n`) into `config.codemodel_dir.parent()` before `init` in `Engine::start`, and pass that folder via `SPICE_SCRIPTS`: `std::env::set_var("SPICE_SCRIPTS", dir)` before `init`.
-3. Re-run.
-
-If existing circuit tests change results under `psa`, stop and report. The spec's fallback (compatibility only for netlists with `imported.` parts) then needs a design decision.
+Expected: all tests pass.
 
 - [ ] **Step 5: Write the failing smoke tests**
 
@@ -1701,7 +1692,7 @@ mod tests {
     fn good_models_pass_and_broken_ones_fail_with_a_log() {
         let good = candidate(".model DG D(IS=1e-14)\n", "DG");
         assert_eq!(smoke_test(&config(), &good), Ok(()));
-        let bad = candidate(".subckt BROKEN a b\nR1 a b\n.ends\n", "BROKEN");
+        let bad = candidate(".subckt BROKEN a b\nQ1 a b 0 QMISSING\n.ends\n", "BROKEN");
         let (message, log) = smoke_test(&config(), &bad).unwrap_err();
         assert!(message.contains("ngspice"), "{message}");
         assert!(!log.is_empty());
@@ -1780,7 +1771,7 @@ If `netlist::template` isn't `pub`, make it `pub mod template;` in `crates/multy
 - [ ] **Step 8: Run tests**
 
 Run: `cd /c/multysm && cargo test -p multysm-core --lib import::smoke`
-Expected: 2 passed. `R1 a b` with no value must be rejected while ngspice loads the circuit (`EngineError::Circuit`); run and convergence errors count as a pass. If this build accepts it, use `Q1 a b c QMISSING` (model not defined) as the broken body.
+Expected: 2 passed. The broken fixture is `Q1 a b 0 QMISSING` (undefined model): this ngspice build accepts `R1 a b` with no value. Run and convergence errors count as a pass. If this build accepts it, use `Q1 a b c QMISSING` (model not defined) as the broken body.
 
 - [ ] **Step 9: Commit**
 
