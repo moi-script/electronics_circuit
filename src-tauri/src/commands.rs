@@ -7,7 +7,7 @@ use multysm_core::circuit::Project;
 use multysm_core::project_file::{parse_project, project_to_json};
 use tauri::{AppHandle, Manager};
 
-use crate::library_dto::{components_root, library_dto, LibraryDto};
+use crate::library_dto::{library_dto, library_roots, LibraryDto};
 use crate::simulation::{engine_config, run_claimed, SimOutcome, SimShared, SimState, SIM_TIMEOUT};
 
 pub fn read_project_file(path: &Path) -> Result<Project, String> {
@@ -19,9 +19,16 @@ pub fn write_project_file(path: &Path, project: &Project) -> Result<(), String> 
     fs::write(path, project_to_json(project)).map_err(|e| format!("Cannot save {}: {e}", path.display()))
 }
 
+/// `<app data>/packs`, created on first use.
+pub fn packs_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("packs");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
 #[tauri::command]
-pub fn load_library() -> LibraryDto {
-    library_dto(&multysm_core::library::load_library(&[components_root()]))
+pub fn load_library(app: AppHandle) -> Result<LibraryDto, String> {
+    Ok(library_dto(&multysm_core::library::load_library(&library_roots(&packs_dir(&app)?))))
 }
 
 #[tauri::command]
@@ -64,7 +71,8 @@ pub fn clear_recovery(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn simulate(state: tauri::State<'_, SimState>, project: Project) -> Result<SimOutcome, String> {
+pub async fn simulate(app: AppHandle, state: tauri::State<'_, SimState>, project: Project) -> Result<SimOutcome, String> {
+    let roots = library_roots(&packs_dir(&app)?);
     // Claim the run slot and reset `cancel` synchronously, before scheduling the blocking task,
     // so a Stop issued right after Run can't be cleared by a cancel-reset that runs later on the
     // blocking thread (see `SimShared::claim`).
@@ -72,7 +80,7 @@ pub async fn simulate(state: tauri::State<'_, SimState>, project: Project) -> Re
         return Ok(SimOutcome::Busy);
     };
     tauri::async_runtime::spawn_blocking(move || {
-        run_claimed(&guard, &project, &components_root(), &engine_config(), SIM_TIMEOUT)
+        run_claimed(&guard, &project, &roots, &engine_config(), SIM_TIMEOUT)
     })
     .await
     .map_err(|e| e.to_string())

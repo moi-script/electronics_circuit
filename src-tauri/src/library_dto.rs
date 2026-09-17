@@ -36,6 +36,13 @@ pub fn components_root() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../components/core"))
 }
 
+/// Built-in parts first, then every imported user pack.
+pub fn library_roots(packs_dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut roots = vec![components_root()];
+    roots.extend(multysm_core::import::pack::pack_roots(packs_dir));
+    roots
+}
+
 pub fn library_dto(library: &Library) -> LibraryDto {
     let mut issues: Vec<IssueDto> = library
         .issues

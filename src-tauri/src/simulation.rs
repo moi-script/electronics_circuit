@@ -34,6 +34,7 @@ pub enum SimOutcome {
 
 struct CachedLibrary {
     stamp: Option<SystemTime>,
+    roots: Vec<PathBuf>,
     library: Library,
 }
 
@@ -83,9 +84,9 @@ impl SimShared {
     }
 }
 
-fn execute(shared: &SimShared, project: &Project, components: &Path, config: &EngineConfig, timeout: Duration) -> SimOutcome {
+fn execute(shared: &SimShared, project: &Project, roots: &[PathBuf], config: &EngineConfig, timeout: Duration) -> SimOutcome {
     let started = Instant::now();
-    shared.with_library(components, |library| {
+    shared.with_library(roots, |library| {
         match simulate_with(project, library, config, &shared.cancel, Some(timeout)) {
             Ok((netlist, result)) => SimOutcome::Ok {
                 result: to_ui_result(project, &netlist, &result, MAX_POINTS),
@@ -108,7 +109,7 @@ fn execute(shared: &SimShared, project: &Project, components: &Path, config: &En
 pub fn run_simulation(
     shared: &SimShared,
     project: &Project,
-    components: &Path,
+    roots: &[PathBuf],
     config: &EngineConfig,
     timeout: Duration,
 ) -> SimOutcome {
@@ -123,22 +124,22 @@ pub fn run_simulation(
     }
     let _guard = LocalGuard(&shared.running);
     shared.cancel.store(false, Ordering::SeqCst);
-    execute(shared, project, components, config, timeout)
+    execute(shared, project, roots, config, timeout)
 }
 
 /// Runs a simulation whose run slot was already claimed with `SimShared::claim`. The guard is
 /// kept alive for the whole call and clears `running` on drop.
-pub fn run_claimed(guard: &RunningGuard, project: &Project, components: &Path, config: &EngineConfig, timeout: Duration) -> SimOutcome {
-    execute(&guard.0, project, components, config, timeout)
+pub fn run_claimed(guard: &RunningGuard, project: &Project, roots: &[PathBuf], config: &EngineConfig, timeout: Duration) -> SimOutcome {
+    execute(&guard.0, project, roots, config, timeout)
 }
 
 impl SimShared {
-    fn with_library<T>(&self, root: &Path, f: impl FnOnce(&Library) -> T) -> T {
-        let stamp = newest_mtime(root);
+    fn with_library<T>(&self, roots: &[PathBuf], f: impl FnOnce(&Library) -> T) -> T {
+        let stamp = roots.iter().filter_map(|root| newest_mtime(root)).max();
         let mut cache = self.library.lock().unwrap_or_else(|e| e.into_inner());
-        let fresh = matches!(&*cache, Some(c) if stamp.is_some() && c.stamp == stamp);
+        let fresh = matches!(&*cache, Some(c) if stamp.is_some() && c.stamp == stamp && c.roots == roots);
         if !fresh {
-            *cache = Some(CachedLibrary { stamp, library: load_library(&[root.to_path_buf()]) });
+            *cache = Some(CachedLibrary { stamp, roots: roots.to_vec(), library: load_library(roots) });
         }
         f(&cache.as_ref().expect("library cached above").library)
     }
