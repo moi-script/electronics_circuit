@@ -38,8 +38,8 @@ Each import is one user pack:
     models/lm358.lib
 ```
 
-`pack.json`: `{ "id", "name", "origin": "import", "sources": [file names], "importedAt": ISO date,
-"parts": count }`. Pack ids are `imported-<slug>`; a clash appends `-2`, `-3`, …
+`pack.json`: `{ "id", "name", "origin": "import", "sources": [file names], "importedAt": Unix seconds,
+"parts": [{ "id", "modelName" }] }`. Pack ids are `imported-<slug>`; a clash appends `-2`, `-3`, …
 
 ### 2.2 Loading
 - A new `library_roots(app)` returns `components/core` followed by every directory in `packs/` that
@@ -166,7 +166,7 @@ A symbol with no model → `no_model`, not importable. A model with no symbol ke
 ## 5. Commands and UI
 
 ### 5.1 Commands (`src-tauri`, logic in `multysm-core::import`)
-- `pick_import_files() -> Vec<String>`: multi-select dialog.
+- File picking uses `@tauri-apps/plugin-dialog` `open({ multiple: true })` from the frontend (no command).
 - `preview_import(paths) -> ImportPreview`:
   `{ previewId, files: [{ path, warnings, error? }], candidates: [{ key, id, name, kind, category,
   source, refPrefix, pins, svg, mapping?: { ports, pins, pairs }, status, messages, selected }] }`.
