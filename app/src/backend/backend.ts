@@ -1,3 +1,4 @@
+import type { ImportChoice, ImportPreview, ImportReport, PackInfo } from "@/model/importTypes";
 import type { SimOutcome } from "@/model/simTypes";
 import type { LibraryData, Project } from "@/model/types";
 
@@ -14,6 +15,12 @@ export interface Backend {
   clearRecovery(): Promise<void>;
   simulate(project: Project): Promise<SimOutcome>;
   stopSimulation(): Promise<void>;
+  pickImportFiles(): Promise<string[]>;
+  previewImport(paths: string[]): Promise<ImportPreview>;
+  commitImport(previewId: number, choices: ImportChoice[], onProgress: (done: number, total: number) => void): Promise<ImportReport>;
+  cancelImport(): Promise<void>;
+  listImports(): Promise<PackInfo[]>;
+  removeImport(packId: string): Promise<void>;
 }
 
 /** Tauri commands reject with strings; everything else with Errors. */
