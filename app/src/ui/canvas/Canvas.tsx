@@ -49,7 +49,7 @@ export default function Canvas() {
   const selection = useEditor((s) => s.selection);
   const sim = useEditor((s) => s.sim);
   const parts = useMemo(() => partMap(library), [library]);
-  const feedback = useMemo(() => simFeedback(sim, project), [sim, project]);
+  const feedback = useMemo(() => simFeedback(sim, project, parts), [sim, project, parts]);
   const labels = useMemo(
     () => (feedback.showLabels && sim.outcome?.status === "ok" ? canvasLabels(sim.outcome.result, project, parts) : []),
     [feedback, sim, project, parts],
@@ -142,6 +142,8 @@ export default function Canvas() {
       data-testid="canvas"
       data-error-parts={feedback.partMessages.size}
       data-op-labels={labels.length}
+      data-lit-parts={[...feedback.effects.values()].filter((e) => e.kind === "glow").length}
+      data-blown-parts={[...feedback.effects.values()].filter((e) => e.kind === "blown").length}
       className="h-full w-full overflow-hidden"
       style={{ ...gridStyle(zoom, pan), cursor: tool.kind === "select" ? "default" : "crosshair" }}
       onContextMenu={(e) => e.preventDefault()}
@@ -175,6 +177,8 @@ export default function Canvas() {
                   selected={selection?.kind === "component" && selection.uid === inst.uid}
                   interactive={tool.kind === "select"}
                   errors={feedback.partMessages.get(inst.uid)}
+                  effect={feedback.effects.get(inst.uid)}
+                  runId={sim.runId}
                 />
               ) : null;
             })}

@@ -13,7 +13,7 @@ export default function StatusBar() {
   const issues = library?.issues ?? [];
   const toolName = tool.kind === "place" ? `Placing ${tool.partId}` : tool.kind === "wire" ? "Wire" : "Select";
   const [now, setNow] = useState(() => Date.now());
-  const problemUids = simFeedback(sim, project).problemUids;
+  const problemUids = simFeedback(sim, project, partMap(library)).problemUids;
   const index = useRef(0);
   const outcomeRef = useRef(sim.outcome);
   if (outcomeRef.current !== sim.outcome) {

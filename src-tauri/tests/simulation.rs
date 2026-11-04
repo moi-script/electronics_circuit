@@ -37,8 +37,8 @@ fn divider(analysis: &str, ground: bool) -> multysm_core::circuit::Project {
     parse_project(&json).unwrap_or_else(|e| panic!("{e}\n{json}"))
 }
 
-fn root() -> PathBuf {
-    components_root()
+fn root() -> Vec<PathBuf> {
+    vec![components_root()]
 }
 
 #[test]
@@ -129,4 +129,44 @@ fn outcomes_serialize_with_a_status_tag() {
     assert!(json["elapsedMs"].is_u64());
     assert!(json["result"]["signals"].is_array());
     assert!(json["result"]["nets"]["wireNet"].is_object());
+}
+
+#[test]
+fn simulates_parts_from_user_packs() {
+    use multysm_app_lib::library_dto::library_roots;
+    use std::sync::atomic::AtomicBool;
+
+    let packs = tempfile::tempdir().unwrap();
+    let lib = packs.path().join("demo.lib");
+    std::fs::write(&lib, ".model DEMO_D D(IS=1e-14)\n").unwrap();
+    let p = multysm_core::import::preview(&[lib], packs.path());
+    let choices: Vec<multysm_core::import::Choice> = p
+        .candidates
+        .iter()
+        .map(|c| multysm_core::import::Choice { key: c.key.clone(), selected: true, category: c.category })
+        .collect();
+    multysm_core::import::commit(&p, &choices, packs.path(), &engine_config(), &AtomicBool::new(false), &mut |_, _| {}).unwrap();
+
+    let roots = library_roots(packs.path());
+    assert_eq!(roots.len(), 2);
+    // V1 -> D1 (imported) -> R1 -> ground, using the divider layout with R1 swapped for the diode.
+    let json = r#"{
+  "format": 1, "app": "test", "packs": [],
+  "components": [
+    { "uid": "c1", "part": "sources.dc_voltage", "ref": "V1", "x": 0, "y": 100, "rot": 0, "mirror": false, "params": { "voltage": "5" } },
+    { "uid": "c2", "part": "imported.demo.demo_d", "ref": "D1", "x": 100, "y": 90, "rot": 0, "mirror": false, "params": {} },
+    { "uid": "c3", "part": "basic.resistor", "ref": "R2", "x": 200, "y": 90, "rot": 0, "mirror": false, "params": {} },
+    { "uid": "c4", "part": "sources.ground", "ref": "GND1", "x": 10, "y": 200, "rot": 0, "mirror": false, "params": {} }
+  ],
+  "wires": [
+    { "uid": "w1", "points": [[20,100],[100,100]] },
+    { "uid": "w2", "points": [[140,100],[200,100]] },
+    { "uid": "w3", "points": [[260,100],[260,200],[20,200]] },
+    { "uid": "w4", "points": [[20,160],[20,200]] }
+  ],
+  "analysis": { "type": "op" }, "probes": [], "view": null
+}"#;
+    let project = parse_project(json).unwrap();
+    let outcome = run_simulation(&SimShared::default(), &project, &roots, &engine_config(), Duration::from_secs(30));
+    assert!(matches!(outcome, SimOutcome::Ok { .. }), "{outcome:?}");
 }

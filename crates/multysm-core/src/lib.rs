@@ -2,6 +2,7 @@
 
 pub mod circuit;
 pub mod engine;
+pub mod import;
 pub mod library;
 pub mod netlist;
 pub mod project_file;

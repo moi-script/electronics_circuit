@@ -1,6 +1,7 @@
 //! multysm desktop shell: a thin Tauri layer over multysm-core.
 
 pub mod commands;
+pub mod import_commands;
 pub mod library_dto;
 pub mod simulation;
 
@@ -8,6 +9,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(simulation::SimState::default())
+        .manage(import_commands::ImportState::default())
         .invoke_handler(tauri::generate_handler![
             commands::load_library,
             commands::open_project,
@@ -17,6 +19,11 @@ pub fn run() {
             commands::clear_recovery,
             commands::simulate,
             commands::stop_simulation,
+            import_commands::preview_import,
+            import_commands::commit_import,
+            import_commands::cancel_import,
+            import_commands::list_imports,
+            import_commands::remove_import,
         ])
         .run(tauri::generate_context!())
         .expect("error while running multysm");

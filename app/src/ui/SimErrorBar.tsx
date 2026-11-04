@@ -3,11 +3,14 @@
 import { useMemo, useState } from "react";
 import { simFeedback } from "@/model/results";
 import { useEditor } from "@/model/store";
+import { partMap } from "@/model/wiring";
 
 export default function SimErrorBar() {
   const sim = useEditor((s) => s.sim);
   const project = useEditor((s) => s.project);
-  const bar = useMemo(() => simFeedback(sim, project).bar, [sim, project]);
+  const library = useEditor((s) => s.library);
+  const parts = useMemo(() => partMap(library), [library]);
+  const bar = useMemo(() => simFeedback(sim, project, parts).bar, [sim, project, parts]);
   const [dismissed, setDismissed] = useState<typeof sim.outcome>(null);
   const [showLog, setShowLog] = useState(false);
   if (!bar || dismissed === sim.outcome) return null;
