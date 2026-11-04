@@ -1,5 +1,6 @@
 import { formatValue } from "./format";
 import { partBounds, pinPosition } from "./geometry";
+import { partEffects, type PartEffect } from "./partEffects";
 import { GROUND_NET, type SimOutcome, type UiResult } from "./simTypes";
 import type { SimSlice } from "./store";
 import type { PartDef, Point, Project } from "./types";
@@ -108,16 +109,35 @@ export interface SimFeedback {
   bar: { message: string; log: string[] | null } | null;
   problemUids: string[];
   showLabels: boolean;
+  /** Lit LEDs and parts destroyed by the run, by component uid. */
+  effects: Map<string, PartEffect>;
 }
 
-const empty = (): SimFeedback => ({ partMessages: new Map(), pinErrors: [], bar: null, problemUids: [], showLabels: false });
+const empty = (): SimFeedback => ({ partMessages: new Map(), pinErrors: [], bar: null, problemUids: [], showLabels: false, effects: new Map() });
 
-export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
+/** Messages for parts a short circuit or overcurrent destroyed. */
+function blownMessages(effects: Map<string, PartEffect>): Map<string, string[]> {
+  const messages = new Map<string, string[]>();
+  for (const [uid, effect] of effects) if (effect.kind === "blown") messages.set(uid, [effect.message]);
+  return messages;
+}
+
+export function simFeedback(sim: SimSlice, project: Project, parts: Map<string, PartDef>): SimFeedback {
   const outcome: SimOutcome | null = sim.outcome;
   if (!outcome || sim.stale || sim.status === "running") return empty();
+  const effects = partEffects(sim, project, parts);
+  const blown = blownMessages(effects);
+  const blownBar = blown.size > 0 ? [...blown.values()].flat().join(" · ") : null;
   switch (outcome.status) {
     case "ok":
-      return { ...empty(), showLabels: outcome.result.analysis === "op" };
+      return {
+        ...empty(),
+        showLabels: outcome.result.analysis === "op",
+        effects,
+        partMessages: blown,
+        problemUids: [...blown.keys()],
+        bar: blownBar ? { message: blownBar, log: null } : null,
+      };
     case "netlist": {
       const partMessages = new Map<string, string[]>();
       const loose: string[] = [];
@@ -126,6 +146,7 @@ export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
         else loose.push(error.message);
       }
       return {
+        ...empty(),
         partMessages,
         pinErrors: outcome.errors.filter((e) => e.componentUid && e.pin).map((e) => ({ uid: e.componentUid!, pin: e.pin! })),
         bar: loose.length > 0 ? { message: loose.join(" · "), log: null } : null,
@@ -138,11 +159,16 @@ export function simFeedback(sim: SimSlice, project: Project): SimFeedback {
       const isKnown = ENGINE_MESSAGES.some(([pattern]) => pattern.test(outcome.log.join("\n")));
       const message = engineMessage(outcome.log, outcome.message);
       const log = isKnown || !outcome.message ? outcome.log : [outcome.message, ...outcome.log];
+      if (blownBar) {
+        // A shorted source is the real cause; ngspice only reports the resulting singular matrix.
+        return { ...empty(), effects, partMessages: blown, bar: { message: blownBar, log }, problemUids: [...blown.keys()] };
+      }
       return {
         ...empty(),
         partMessages: new Map(uids.map((uid) => [uid, [message]])),
         bar: { message, log },
         problemUids: uids,
+        effects,
       };
     }
     case "timeout":

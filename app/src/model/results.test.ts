@@ -86,7 +86,7 @@ describe("simFeedback", () => {
   };
 
   it("routes netlist errors to parts, pins and the bar", () => {
-    const f = simFeedback({ ...idleSim(), status: "failed", outcome: netlist }, dividerProject());
+    const f = simFeedback({ ...idleSim(), status: "failed", outcome: netlist }, dividerProject(), parts);
     expect(f.partMessages.get("c5")).toEqual(["R3 pin 1 is not connected", "R3 pin 2 is not connected"]);
     expect(f.pinErrors).toEqual([{ uid: "c5", pin: "1" }, { uid: "c5", pin: "2" }]);
     expect(f.bar).toEqual({ message: "The circuit has no ground. Add a Ground part.", log: null });
@@ -96,10 +96,10 @@ describe("simFeedback", () => {
 
   it("maps engine failures and timeouts to the bar", () => {
     const project = dividerProject();
-    const engine = simFeedback({ ...idleSim(), status: "failed", outcome: { status: "engine", message: "m", log: ["timestep too small near rr2"] } }, project);
+    const engine = simFeedback({ ...idleSim(), status: "failed", outcome: { status: "engine", message: "m", log: ["timestep too small near rr2"] } }, project, parts);
     expect(engine.bar).toEqual({ message: "The simulation didn't converge. Try a smaller max step.", log: ["timestep too small near rr2"] });
     expect(engine.problemUids).toEqual(["c3"]);
-    const timeout = simFeedback({ ...idleSim(), status: "failed", outcome: { status: "timeout", seconds: 30 } }, project);
+    const timeout = simFeedback({ ...idleSim(), status: "failed", outcome: { status: "timeout", seconds: 30 } }, project, parts);
     expect(timeout.bar?.message).toBe("Stopped after 30 s. Try a shorter stop time or a larger max step.");
   });
 
@@ -108,22 +108,23 @@ describe("simFeedback", () => {
     const engine = simFeedback(
       { ...idleSim(), status: "failed", outcome: { status: "engine", message: "could not load ngspice from X", log: [] } },
       project,
+      parts,
     );
     expect(engine.bar?.message).toContain("could not load ngspice from X");
     expect(engine.bar?.log).toContain("could not load ngspice from X");
   });
 
   it("shows nothing when stale and labels only for fresh op results", () => {
-    expect(simFeedback({ ...idleSim(), status: "failed", outcome: netlist, stale: true }, dividerProject()).bar).toBeNull();
+    expect(simFeedback({ ...idleSim(), status: "failed", outcome: netlist, stale: true }, dividerProject(), parts).bar).toBeNull();
     const ok: SimOutcome = { status: "ok", elapsedMs: 1, result: opResult() };
-    expect(simFeedback({ ...idleSim(), status: "done", outcome: ok }, dividerProject()).showLabels).toBe(true);
-    expect(simFeedback({ ...idleSim(), status: "done", outcome: ok, stale: true }, dividerProject()).showLabels).toBe(false);
+    expect(simFeedback({ ...idleSim(), status: "done", outcome: ok }, dividerProject(), parts).showLabels).toBe(true);
+    expect(simFeedback({ ...idleSim(), status: "done", outcome: ok, stale: true }, dividerProject(), parts).showLabels).toBe(false);
   });
 
   it("returns a fresh partMessages map on every call", () => {
     const project = dividerProject();
-    const a = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project);
-    const b = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project);
+    const a = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project, parts);
+    const b = simFeedback({ ...idleSim(), status: "stopped", outcome: { status: "stopped" } }, project, parts);
     expect(a.partMessages).not.toBe(b.partMessages);
     expect(a.pinErrors).not.toBe(b.pinErrors);
     expect(a.problemUids).not.toBe(b.problemUids);
